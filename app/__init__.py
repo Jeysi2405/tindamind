@@ -11,6 +11,15 @@ bcrypt = Bcrypt()
 login_manager = LoginManager()
 
 
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Phase 1 placeholder user loader.
+    Full database user query will be attached in Phase 2 with the User model.
+    """
+    return None
+
+
 def create_app(config_name=None):
     """
     Application Factory constructing the Flask application instance.
