@@ -1,0 +1,36 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="space-y-3 mb-4" id="flash-messages-wrapper">
+            {% for category, message in messages %}
+                {% set alert_type = 'info' %}
+                {% set bg_class = 'bg-blue-50 text-blue-800 border-blue-200' %}
+                {% set icon_class = 'fa-circle-info text-blue-500' %}
+
+                {% if category in ['success', 'ok'] %}
+                    {% set alert_type = 'success' %}
+                    {% set bg_class = 'bg-emerald-50 text-emerald-800 border-emerald-200' %}
+                    {% set icon_class = 'fa-circle-check text-emerald-500' %}
+                {% elif category in ['error', 'danger'] %}
+                    {% set alert_type = 'error' %}
+                    {% set bg_class = 'bg-rose-50 text-rose-800 border-rose-200' %}
+                    {% set icon_class = 'fa-circle-exclamation text-rose-500' %}
+                {% elif category in ['warning', 'alert'] %}
+                    {% set alert_type = 'warning' %}
+                    {% set bg_class = 'bg-amber-50 text-amber-800 border-amber-200' %}
+                    {% set icon_class = 'fa-triangle-exclamation text-amber-500' %}
+                {% endif %}
+
+                <div class="flash-alert-item flex items-center justify-between p-4 rounded-xl border shadow-sm transition-all duration-300 {{ bg_class }}" role="alert" data-alert-category="{{ alert_type }}">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid {{ icon_class }} text-lg flex-shrink-0"></i>
+                        <span class="text-sm font-medium">{{ message }}</span>
+                    </div>
+                    <button type="button" class="dismiss-alert-btn ml-4 inline-flex items-center justify-center p-1.5 rounded-lg opacity-70 hover:opacity-100 focus:outline-none transition-opacity" onclick="this.closest('.flash-alert-item').remove()">
+                        <span class="sr-only">Dismiss</span>
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
