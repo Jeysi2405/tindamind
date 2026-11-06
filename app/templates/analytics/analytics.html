@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Analytics & Sales Board</h1>
+      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
+    </div>
+    <div class="flex items-center gap-4 text-sm font-semibold text-gray-700">
+      <span class="flex items-center gap-1.5" id="currentDateSpan"><i class="fa-regular fa-calendar text-gray-400"></i> Loading date...</span>
+      <span class="flex items-center gap-1.5" id="currentTimeSpan"><i class="fa-regular fa-clock text-gray-400"></i> Loading time...</span>
+    </div>
+  </div>
+
+  <!-- Metric Summary Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-gray-400 uppercase">TODAY'S SALES</p>
+        <p class="text-2xl font-extrabold text-gray-900">₱{{ "{:,.2f}".format(today_sales if today_sales else 0.0) }}</p>
+        <p class="text-xs font-semibold text-emerald-600 pt-0.5">📈 Active Daily Revenue</p>
+      </div>
+      <div class="w-10 h-10 rounded-2xl bg-[#EAF8E6] flex items-center justify-center text-[#55B745] font-bold">₱</div>
+    </div>
+
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-gray-400 uppercase">TOTAL TRANSACTIONS</p>
+        <p class="text-2xl font-extrabold text-gray-900">{{ today_transactions }}</p>
+        <p class="text-xs font-semibold text-blue-600 pt-0.5">📈 Customer Traffic</p>
+      </div>
+      <div class="w-10 h-10 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#4DA1FF]"><i class="fa-regular fa-newspaper"></i></div>
+    </div>
+
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-gray-400 uppercase">AVG ORDER VALUE</p>
+        <p class="text-2xl font-extrabold text-gray-900">₱{{ "{:,.2f}".format(avg_order_value) }}</p>
+        <p class="text-xs text-gray-400 pt-0.5">= Consistent order size</p>
+      </div>
+      <div class="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-500"><i class="fa-solid fa-receipt"></i></div>
+    </div>
+
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-gray-400 uppercase">LOW STOCK REORDERS</p>
+        <p class="text-2xl font-extrabold text-[#F4A838]">{{ low_stock_count }} Items</p>
+        <p class="text-xs font-semibold text-amber-600 pt-0.5">🚚 Action needed</p>
+      </div>
+      <div class="w-10 h-10 rounded-2xl bg-[#FFF9E6] flex items-center justify-center text-[#F5B842]"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+  </div>
+
+  <!-- Charts & Top Moving Products -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="lg:col-span-8 space-y-6">
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <h2 class="text-xl font-bold text-gray-900">Weekly Revenue by Category</h2>
+        <div class="h-64 relative"><canvas id="categoryRevenueChart"></canvas></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <h2 class="text-lg font-bold text-gray-900 uppercase tracking-wide">Hourly Peak Sales Density (Today)</h2>
+        <div class="h-56 relative"><canvas id="hourlySalesChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+      <h2 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Top Selling Products (Today)</h2>
+      <div class="divide-y divide-gray-100">
+        {% for item in top_selling_products %}
+        <div class="py-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-50 border flex items-center justify-center text-xs font-bold text-orange-500">
+              {{ item.product_name[:2]|upper }}
+            </div>
+            <div>
+              <div class="font-bold text-gray-900 text-sm">{{ item.product_name }}</div>
+              <div class="text-xs text-gray-400">{{ item.units_sold }} items sold</div>
+            </div>
+          </div>
+          <span class="font-mono font-bold text-gray-900 text-sm">₱{{ "{:,.2f}".format(item.total_revenue) }}</span>
+        </div>
+        {% else %}
+        <p class="text-center py-6 text-gray-400 text-sm">No products sold today yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const dateEl = document.getElementById('currentDateSpan');
+  const timeEl = document.getElementById('currentTimeSpan');
+  if (dateEl) dateEl.innerHTML = `<i class="fa-regular fa-calendar text-gray-400"></i> ${dateStr}`;
+  if (timeEl) timeEl.innerHTML = `<i class="fa-regular fa-clock text-gray-400"></i> ${timeStr}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+fetch('/analytics/api/sales-data')
+  .then(res => res.json())
+  .then(apiData => {
+    const labels = apiData.labels.length > 0 ? apiData.labels : ['Snacks', 'Beverages', 'Canned Goods', 'Noodles'];
+    const values = apiData.values.length > 0 ? apiData.values : [0, 0, 0, 0];
+    const colors = ['#9df079', '#E8B3F5', '#CDE5FE', '#FF8F80', '#FAD2CF', '#FFF9E6'];
+
+    new Chart(document.getElementById('categoryRevenueChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors.slice(0, labels.length),
+          borderRadius: 12,
+          barThickness: 20
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
+      }
+    });
+  })
+  .catch(() => {
+    new Chart(document.getElementById('categoryRevenueChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Snacks', 'Beverages', 'Canned Goods', 'Noodles'],
+        datasets: [{
+          data: [0, 0, 0, 0],
+          backgroundColor: ['#9df079', '#E8B3F5', '#CDE5FE', '#FF8F80'],
+          borderRadius: 12,
+          barThickness: 20
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
+      }
+    });
+  });
+
+new Chart(document.getElementById('hourlySalesChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: ['7 AM', '8 AM', '12 PM', '2 PM', '5 PM', '7 PM', '9 PM', '11 PM', '1 AM'],
+    datasets: [{
+      data: [20, 65, 95, 45, 100, 80, 95, 65, 35],
+      backgroundColor: ['#FF8F80', '#DCEBFE', '#8EE469', '#E8B3F5', '#8EE469', '#DCEBFE', '#8EE469', '#DCEBFE', '#E8B3F5'],
+      borderRadius: 12
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { display: false }, x: { grid: { display: false } } }
+  }
+});
+</script>
+{% endblock %}  

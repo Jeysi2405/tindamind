@@ -1,0 +1,1 @@
+from app.analytics.analytics import analytics_bp

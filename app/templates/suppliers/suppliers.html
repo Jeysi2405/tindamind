@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Supplier & Restock Management</h1>
+      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
+    </div>
+    <div class="flex items-center gap-4 text-gray-700">
+      <div class="flex items-center gap-4 text-sm font-semibold">
+        <span class="flex items-center gap-1.5" id="currentDateSpan"><i class="fa-regular fa-calendar text-gray-400"></i> Loading date...</span>
+        <span class="flex items-center gap-1.5" id="currentTimeSpan"><i class="fa-regular fa-clock text-gray-400"></i> Loading time...</span>
+      </div>
+      <button class="relative p-1.5 text-gray-400 hover:text-gray-700"><i class="fa-regular fa-bell text-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- Restock Suggestions & Stockout Risk Warnings -->
+  <div class="bg-amber-50/60 rounded-3xl p-6 border border-amber-200/70 shadow-sm space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">💡</span>
+        <h2 class="text-lg font-bold text-amber-900">Automated Restock Recommendations</h2>
+      </div>
+      <button onclick="openModal('createPOModal')" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition">
+        + Create Custom Purchase Order
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for product in restock_candidates %}
+      <div class="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm flex items-center justify-between">
+        <div>
+          <h4 class="font-bold text-gray-900 text-sm">{{ product.product_name }}</h4>
+          <p class="text-xs text-rose-600 font-semibold mt-0.5">Current Stock: {{ product.stock_quantity }} units (Reorder: {{ product.reorder_level }})</p>
+          <p class="text-[11px] text-gray-400">Supplier: {{ product.supplier.supplier_name }}</p>
+        </div>
+        <button onclick="prefillPO({{ product.supplier_id }}, {{ product.product_id }})" class="px-3 py-1.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition">
+          1-Click Restock
+        </button>
+      </div>
+      {% else %}
+      <p class="text-xs text-gray-500 col-span-full">All inventory levels are currently above reorder thresholds.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Partner Supplier Directory -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-bold text-gray-900">Partner Supplier Directory</h2>
+      <button onclick="openModal('addSupplierModal')" class="px-4 py-2 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-bold text-xs rounded-xl transition">
+        + Add New Supplier
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for supplier in suppliers %}
+      <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
+        <div>
+          <div class="flex justify-between items-start mb-2">
+            <span class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 text-lg">🏢</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
+          </div>
+          <h3 class="font-bold text-gray-900 text-base">{{ supplier.supplier_name }}</h3>
+          <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-user text-gray-400 mr-1"></i> {{ supplier.contact_person or 'No Contact Person' }}</p>
+          <p class="text-xs text-gray-500"><i class="fa-solid fa-phone text-gray-400 mr-1"></i> {{ supplier.phone or 'N/A' }}</p>
+          <p class="text-xs text-gray-500 truncate"><i class="fa-solid fa-envelope text-gray-400 mr-1"></i> {{ supplier.email or 'N/A' }}</p>
+        </div>
+        <div class="pt-3 border-t border-gray-200 mt-3 flex items-center justify-between text-xs font-semibold text-gray-500">
+          <span>Lead Time: {{ supplier.lead_time_days }} days</span>
+          <form method="POST" action="{{ url_for('suppliers.delete_supplier', supplier_id=supplier.supplier_id) }}" onsubmit="return confirm('Delete supplier {{ supplier.supplier_name }}?');">
+            <button type="submit" class="text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-span-full text-center py-8 text-gray-400">No partner suppliers added yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recent Purchase Orders Table -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <h2 class="text-xl font-bold text-gray-900">Recent Purchase Orders</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 px-4">PO #</th>
+            <th class="py-3 px-4">Supplier</th>
+            <th class="py-3 px-4">Order Date</th>
+            <th class="py-3 px-4">Expected Delivery</th>
+            <th class="py-3 px-4">Total Amount</th>
+            <th class="py-3 px-4">Status</th>
+            <th class="py-3 px-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for po in recent_pos %}
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-3.5 px-4 font-mono font-bold text-gray-900">{{ po.po_number }}</td>
+            <td class="py-3.5 px-4 font-semibold text-gray-700">{{ po.supplier.supplier_name }}</td>
+            <td class="py-3.5 px-4 text-xs text-gray-500">{{ po.order_date.strftime('%Y-%m-%d') }}</td>
+            <td class="py-3.5 px-4 text-xs text-gray-500">{{ po.expected_delivery.strftime('%Y-%m-%d') if po.expected_delivery else 'N/A' }}</td>
+            <td class="py-3.5 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(po.total_cost) }}</td>
+            <td class="py-3.5 px-4">
+              {% if po.status == 'Received' %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Received</span>
+              {% elif po.status == 'Pending' %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">⏳ Pending Delivery</span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">{{ po.status }}</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              {% if po.status != 'Received' %}
+              <form method="POST" action="{{ url_for('suppliers.update_po_status', po_id=po.purchase_order_id) }}" class="inline">
+                <input type="hidden" name="status" value="Received">
+                <button type="submit" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition">
+                  Mark Received
+                </button>
+              </form>
+              {% else %}
+              <span class="text-xs text-gray-400 font-bold">✓ Complete</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center py-8 text-gray-400">No purchase order history recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Supplier Modal -->
+<div id="addSupplierModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Add Partner Supplier</h3>
+      <button onclick="closeModal('addSupplierModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers.add_supplier') }}" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Supplier / Vendor Name</label>
+        <input type="text" name="supplier_name" required placeholder="e.g. Monde Nissin Corp" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Contact Person</label>
+          <input type="text" name="contact_person" placeholder="e.g. Maria Santos" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Lead Time (Days)</label>
+          <input type="number" name="lead_time_days" value="3" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Phone Number</label>
+          <input type="text" name="phone" placeholder="0917-000-0000" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+          <input type="email" name="email" placeholder="vendor@domain.com" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Address / Hub Location</label>
+        <textarea name="address" rows="2" placeholder="Enter supplier office or warehouse address..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t border-gray-100">
+        <button type="button" onclick="closeModal('addSupplierModal')" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] hover:bg-[#8ee469] font-bold text-gray-900 rounded-xl transition">Add Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create Purchase Order Modal -->
+<div id="createPOModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Create Purchase Order</h3>
+      <button onclick="closeModal('createPOModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers.create_po') }}" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Target Supplier</label>
+        <select id="po_supplier_select" name="supplier_id" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          {% for supplier in suppliers %}
+          <option value="{{ supplier.supplier_id }}">{{ supplier.supplier_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Restock Item</label>
+        <select id="po_product_select" name="product_id" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          {% for product in restock_candidates %}
+          <option value="{{ product.product_id }}">{{ product.product_name }} (Current: {{ product.stock_quantity }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Order Quantity (Units)</label>
+        <input type="number" name="quantity" value="50" min="1" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t border-gray-100">
+        <button type="button" onclick="closeModal('createPOModal')" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-amber-500 hover:bg-amber-600 font-bold text-white rounded-xl transition">Submit PO</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const dateEl = document.getElementById('currentDateSpan');
+  const timeEl = document.getElementById('currentTimeSpan');
+  if (dateEl) dateEl.innerHTML = `<i class="fa-regular fa-calendar text-gray-400"></i> ${dateStr}`;
+  if (timeEl) timeEl.innerHTML = `<i class="fa-regular fa-clock text-gray-400"></i> ${timeStr}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function prefillPO(supplierId, productId) {
+  const supSelect = document.getElementById('po_supplier_select');
+  const prodSelect = document.getElementById('po_product_select');
+  if (supSelect) supSelect.value = supplierId;
+  if (prodSelect) prodSelect.value = productId;
+  openModal('createPOModal');
+}
+</script>
+{% endblock %}

@@ -3,50 +3,60 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
-from config import config_by_name
 
-# Initialize Flask extensions in an unbound global state
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 login_manager = LoginManager()
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    """
-    Phase 1 placeholder user loader.
-    Full database user query will be attached in Phase 2 with the User model.
-    """
-    return None
-
-
-def create_app(config_name=None):
-    """
-    Application Factory constructing the Flask application instance.
-    Loads environment-specific configuration and initializes extensions.
-    """
-    if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'development')
-
+def create_app(config_class=None):
     app = Flask(__name__)
-    
-    # Load configuration object
-    selected_config = config_by_name.get(config_name, config_by_name['default'])
-    app.config.from_object(selected_config)
 
-    # Bind extensions to the current application instance
+    if isinstance(config_class, str):
+        try:
+            from config import config_by_name
+            selected_config = config_by_name.get(config_class.lower(), config_by_name['default'])
+        except (ImportError, KeyError):
+            from config import DevelopmentConfig
+            selected_config = DevelopmentConfig
+        app.config.from_object(selected_config)
+    elif config_class is not None:
+        app.config.from_object(config_class)
+    else:
+        try:
+            from config import DevelopmentConfig
+            app.config.from_object(DevelopmentConfig)
+        except ImportError:
+            app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tindamind-secret-key-dev')
+            app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/tindamind.db')
+            app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
     db.init_app(app)
     bcrypt.init_app(app)
     login_manager.init_app(app)
 
-    # Configure Flask-Login defaults (enforced in Phase 2)
     login_manager.login_view = 'auth.login'
-    login_manager.login_message_category = 'warning'
+    login_manager.login_message_category = 'info'
 
-    # Register Blueprints
-    core_module_path = os.path.join(os.path.dirname(__file__), 'core')
-    if os.path.exists(core_module_path):
-        from app.core import core_bp
-        app.register_blueprint(core_bp)
+    from app.models import User
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
+    # Direct Blueprint Registration
+    from app.auth.auth import auth_bp
+    from app.inventory.inventory import inventory_bp
+    from app.pos.pos import pos_bp
+    from app.suppliers.suppliers import suppliers_bp
+    from app.analytics.analytics import analytics_bp
+    from app.core.core import core_bp
+
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    app.register_blueprint(pos_bp, url_prefix='/pos')
+    app.register_blueprint(suppliers_bp, url_prefix='/suppliers')
+    app.register_blueprint(analytics_bp, url_prefix='/analytics')
+    app.register_blueprint(core_bp)
 
     return app

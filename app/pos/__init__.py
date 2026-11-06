@@ -1,0 +1,1 @@
+from app.pos.pos import pos_bp
