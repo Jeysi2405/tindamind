@@ -1,0 +1,161 @@
+/* Reset margins and force html/body to fill 100% of the screen */
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: hsla(6, 77%, 95%, 0.982);
+    overflow-x: hidden; 
+}
+
+/* Logo strictly at the absolute top-left of the page */
+.brand-header {
+    position: absolute;
+    top: 25px;
+    left: 35px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+}
+
+.brand-logo-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.brand-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e67e22;
+}
+
+/* Wrapper para nakagitna at may tamang espasyo sa magkabilang gilid */
+.login-wrapper {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    gap: 5vw; 
+    padding: 0 5vw; 
+    box-sizing: border-box;
+}
+
+/* Left Section: Store Illustration */
+.login-left-side {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.illustration-container {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.store-illustration-img {
+    width: 100%;
+    max-height: 310px;
+    object-fit: contain;
+}
+
+/* Right Section: Floating Login Card */
+.login-right-side {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-floating-card {
+    background: #ffffff;
+    width: 100%;
+    max-width: 800px; /* Sakto ang lapad, hindi masyadong malaki para may space sa kanan */
+    padding: 48px 70px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.login-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #e67e22;
+    margin: 0 0 6px 0;
+}
+
+.login-subtitle {
+    font-size: 14px;
+    color: #888888;
+    margin: 0 0 25px 0;
+}
+
+/* Input group styling with integrated icon and line border */
+.input-group {
+    position: relative;
+    margin-bottom: 22px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 0;
+    font-size: 15px;
+    top: 11px;
+    color: #666;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 14px 12px 35px;
+    border: none;
+    border-bottom: 1.5px solid #cccccc;
+    border-radius: 0;
+    font-size: 15px;
+    outline: none;
+    background: transparent;
+}
+
+.input-group input:focus {
+    border-bottom-color: #e67e22;
+}
+
+.btn-submit-login {
+    width: 100%;
+    padding: 14px;
+    background-color: #e67e22;
+    border: none;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background-color 0.2s;
+}
+
+.btn-submit-login:hover {
+    background-color: #d35400;
+}
+
+.forgot-link-box {
+    text-align: center;
+    margin-top: 18px;
+}
+
+.forgot-link-box a {
+    font-size: 13px;
+    color: #999999;
+    text-decoration: none;
+}
+
+.forgot-link-box a:hover {
+    color: #666666;
+}
