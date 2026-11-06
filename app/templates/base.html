@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#EDEDED]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TindaMind - Store Management{% endblock %}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="h-full flex antialiased text-gray-800">
+
+  <aside class="w-64 bg-white border-r border-gray-100 flex flex-col justify-between shrink-0 p-6">
+    <div class="space-y-8">
+      <a href="/" class="flex items-center gap-2.5">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-8 w-auto" onerror="this.style.display='none'">
+        <i class="fa-solid fa-cash-register text-2xl text-gray-800"></i>
+        <span class="text-2xl font-black text-[#F2994A] tracking-tight">TindaMind</span>
+      </a>
+
+      <nav class="space-y-2">
+        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Main Menu</p>
+        
+        <a href="/" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/' else 'text-gray-500 hover:bg-gray-50' }}">
+          <i class="fa-solid fa-chart-pie w-5"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="/pos" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/pos' else 'text-gray-500 hover:bg-gray-50' }}">
+          <i class="fa-solid fa-cash-register w-5"></i>
+          <span>POS / Check Out</span>
+        </a>
+
+        <a href="/inventory" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if '/inventory' in request.path else 'text-gray-500 hover:bg-gray-50' }}">
+          <i class="fa-solid fa-boxes-stacked w-5"></i>
+          <span>Inventory & Catalog</span>
+        </a>
+
+        <a href="/suppliers" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/suppliers' else 'text-gray-500 hover:bg-gray-50' }}">
+          <i class="fa-solid fa-truck w-5"></i>
+          <span>Suppliers & Restock</span>
+        </a>
+
+        <a href="/analytics" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/analytics' else 'text-gray-500 hover:bg-gray-50' }}">
+          <i class="fa-solid fa-chart-line w-5"></i>
+          <span>Analytics & Sales</span>
+        </a>
+
+        <a href="#" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:bg-gray-50 transition">
+          <i class="fa-solid fa-gear w-5"></i>
+          <span>Settings</span>
+        </a>
+      </nav>
+    </div>
+
+    <div>
+      <a href="/login" class="flex items-center gap-2.5 text-sm font-bold text-rose-500 hover:text-rose-600 transition p-2">
+        <i class="fa-solid fa-arrow-right-from-bracket rotate-180 text-lg"></i>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto p-8">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-6 space-y-2 max-w-7xl">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded-2xl text-sm font-semibold border {% if category in ['danger', 'error'] %}bg-rose-50 border-rose-200 text-rose-600{% elif category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-600{% else %}bg-amber-50 border-amber-200 text-amber-600{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="max-w-7xl mx-auto">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+</body>
+</html>

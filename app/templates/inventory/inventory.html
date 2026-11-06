@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Inventory Management</h1>
+      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+    </div>
+    <div class="flex items-center gap-4 text-gray-700">
+      <div class="flex items-center gap-4 text-sm font-semibold">
+        <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-gray-400"></i> October 26, 2026</span>
+        <span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-gray-400"></i> 11:37 AM</span>
+      </div>
+      <button class="relative p-1.5 text-gray-400 hover:text-gray-700"><i class="fa-regular fa-bell text-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- Layout: Catalog Left, Metrics Right -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="lg:col-span-8 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+      <!-- Search & Add -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <form method="GET" action="{{ url_for('core.inventory_view') }}" class="relative flex-1">
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search product name, SKU, or category..." class="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50/80 border border-gray-200/90 rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+          <i class="fa-solid fa-magnifying-glass text-gray-400 absolute left-3.5 top-3.5"></i>
+          {% if active_cat %}<input type="hidden" name="cat" value="{{ active_cat }}">{% endif %}
+        </form>
+        <button onclick="openModal('addProductModal')" type="button" class="inline-flex items-center justify-center px-5 py-2.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-semibold text-sm rounded-2xl shadow-sm transition whitespace-nowrap active:scale-[0.98]">
+          + Add New Product
+        </button>
+      </div>
+
+      <!-- Categories Filter -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
+        <a href="{{ url_for('core.inventory_view', q=search_query) }}" class="px-5 py-1.5 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if not active_cat else 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">All Items</a>
+        {% for cat in categories %}
+        <a href="{{ url_for('core.inventory_view', cat=cat.category_name, q=search_query) }}" class="px-5 py-1.5 rounded-full font-medium transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 font-semibold shadow-sm' if active_cat == cat.category_name else 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">{{ cat.category_name }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-600">
+          <thead>
+            <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+              <th class="py-3.5 pr-4">Product Details</th>
+              <th class="py-3.5 px-4">Category</th>
+              <th class="py-3.5 px-4">Cost Price</th>
+              <th class="py-3.5 px-4">Selling Price</th>
+              <th class="py-3.5 px-4">Stock Level</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 pl-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for p in products %}
+            <tr class="hover:bg-gray-50/70 transition">
+              <td class="py-4 pr-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-xl shrink-0">
+                    {% if 'Soup' in p.product_name %}🥫{% elif 'Noodle' in p.product_name %}🍜{% elif 'Chip' in p.product_name %}🍟{% elif 'Sardine' in p.product_name %}🐟{% elif 'Juice' in p.product_name %}🧃{% else %}📦{% endif %}
+                  </div>
+                  <div>
+                    <div class="font-bold text-gray-900 text-base leading-snug">{{ p.product_name }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">SKU: TM-{{ "%03d"|format(p.product_id) }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4 text-xs font-semibold text-gray-500 uppercase">{{ p.category.category_name }}</td>
+              <td class="py-4 px-4 text-sm text-gray-500 font-mono">₱{{ "{:,.2f}".format(p.cost_price) }}</td>
+              <td class="py-4 px-4 text-sm text-gray-700 font-mono font-medium">₱{{ "{:,.2f}".format(p.selling_price) }}</td>
+              <td class="py-4 px-4 font-bold text-gray-900">{{ p.stock_quantity }} UNITS</td>
+              <td class="py-4 px-4">
+                {% if p.stock_quantity == 0 %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✕ Out of Stock</span>
+                {% elif p.stock_quantity <= p.reorder_level %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FAD2CF] text-[#E05345]">• Low Stock</span>
+                {% else %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#D6F5D0] text-[#41A538]">• In Stock</span>
+                {% endif %}
+              </td>
+              <td class="py-4 pl-4 text-right">
+                <div class="inline-flex items-center gap-1 text-gray-700">
+                  <button onclick='openEditModal({{ p.product_id }}, {{ p.product_name|tojson }}, {{ p.cost_price }}, {{ p.selling_price }}, {{ p.stock_quantity }}, {{ p.reorder_level }})' class="p-1.5 hover:text-emerald-600 transition">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <form method="POST" action="{{ url_for('core.delete_product', product_id=p.product_id) }}" class="inline" onsubmit="return confirm('Delete {{ p.product_name }}?');">
+                    <button type="submit" class="p-1.5 hover:text-rose-600 transition"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center py-10 text-gray-400">No items match your query.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Metrics Column -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">TOTAL SKUS</p>
+          <p class="text-3xl font-extrabold text-gray-900">{{ total_skus }}</p>
+          <p class="text-xs font-semibold text-[#5CB85C] pt-1">Active products</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#4DA1FF] text-xl font-bold"><i class="fa-solid fa-box"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">LOW STOCK ALERTS</p>
+          <p class="text-3xl font-extrabold text-[#F4A838]">{{ low_stock }}</p>
+          <p class="text-xs font-semibold text-[#E59728] pt-1">Reorder soon</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#FFF9E6] flex items-center justify-center text-[#F5B842] text-xl font-bold"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">OUT OF STOCK</p>
+          <p class="text-3xl font-extrabold text-[#9E3636]">{{ out_of_stock }}</p>
+          <p class="text-xs font-semibold text-[#D64545] pt-1">Urgent restock</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#FDEAEA] flex items-center justify-center text-[#E56A6A] text-xl font-bold"><i class="fa-solid fa-circle-xmark"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">TOTAL STOCK VALUE</p>
+          <p class="text-3xl font-extrabold text-gray-900">₱{{ "{:,.2f}".format(total_val) }}</p>
+          <p class="text-xs font-medium text-emerald-600 pt-1">Estimated retail value</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#EAF8E6] flex items-center justify-center text-[#55B745] text-xl font-bold"><i class="fa-solid fa-wallet"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div id="addProductModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Add New Product</h3>
+      <button onclick="closeModal('addProductModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('core.add_product') }}" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Product Name</label>
+        <input type="text" name="product_name" required placeholder="e.g. Corned Beef" class="w-full px-3 py-2 text-sm border rounded-xl">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Cost (₱)</label>
+          <input type="number" step="0.01" name="cost_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Selling (₱)</label>
+          <input type="number" step="0.01" name="selling_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Stock</label>
+          <input type="number" name="stock_quantity" value="10" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Reorder Level</label>
+          <input type="number" name="reorder_level" value="5" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('addProductModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] font-bold rounded-xl">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editProductModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Edit Product</h3>
+      <button onclick="closeModal('editProductModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form id="editProductForm" method="POST" action="" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Product Name</label>
+        <input type="text" id="edit_name" name="product_name" required class="w-full px-3 py-2 text-sm border rounded-xl">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Cost (₱)</label>
+          <input type="number" step="0.01" id="edit_cost" name="cost_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Selling (₱)</label>
+          <input type="number" step="0.01" id="edit_price" name="selling_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Stock</label>
+          <input type="number" id="edit_stock" name="stock_quantity" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Reorder Level</label>
+          <input type="number" id="edit_reorder" name="reorder_level" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('editProductModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] font-bold rounded-xl">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function openEditModal(id, name, cost, price, stock, reorder) {
+  document.getElementById('editProductForm').action = '/inventory/edit/' + id;
+  document.getElementById('edit_name').value = name;
+  document.getElementById('edit_cost').value = cost;
+  document.getElementById('edit_price').value = price;
+  document.getElementById('edit_stock').value = stock;
+  document.getElementById('edit_reorder').value = reorder;
+  openModal('editProductModal');
+}
+</script>
+{% endblock %}

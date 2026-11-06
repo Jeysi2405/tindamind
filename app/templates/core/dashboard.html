@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Store Dashboard</h1>
+      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+    </div>
+    <div class="flex items-center gap-4 text-sm font-semibold text-gray-700">
+      <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-gray-400"></i> October 26, 2026</span>
+      <span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-gray-400"></i> 11:37 AM</span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+    <a href="/pos" class="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3 block">
+      <div class="w-12 h-12 rounded-2xl bg-[#c5f87b] flex items-center justify-center text-gray-900 text-xl font-bold">
+        <i class="fa-solid fa-cash-register"></i>
+      </div>
+      <h3 class="text-lg font-bold text-gray-900">POS Checkout</h3>
+      <p class="text-xs text-gray-500">Ring up customer sales and accept cash or QR payments.</p>
+    </a>
+
+    <a href="/inventory" class="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3 block">
+      <div class="w-12 h-12 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#4DA1FF] text-xl font-bold">
+        <i class="fa-solid fa-boxes-stacked"></i>
+      </div>
+      <h3 class="text-lg font-bold text-gray-900">Inventory Catalog</h3>
+      <p class="text-xs text-gray-500">Add, edit, or adjust catalog products and low-stock reorder levels.</p>
+    </a>
+
+    <a href="/suppliers" class="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3 block">
+      <div class="w-12 h-12 rounded-2xl bg-[#FFF9E6] flex items-center justify-center text-[#F5B842] text-xl font-bold">
+        <i class="fa-solid fa-truck"></i>
+      </div>
+      <h3 class="text-lg font-bold text-gray-900">Restock & Suppliers</h3>
+      <p class="text-xs text-gray-500">View supplier contacts and automated reorder suggestions.</p>
+    </a>
+
+    <a href="/analytics" class="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3 block">
+      <div class="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 text-xl font-bold">
+        <i class="fa-solid fa-chart-line"></i>
+      </div>
+      <h3 class="text-lg font-bold text-gray-900">Sales Analytics</h3>
+      <p class="text-xs text-gray-500">Hourly foot traffic, category revenue, and top-selling products.</p>
+    </a>
+  </div>
+</div>
+{% endblock %}
