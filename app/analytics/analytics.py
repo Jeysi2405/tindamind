@@ -44,6 +44,41 @@ def index():
         Product.stock_quantity <= Product.reorder_level
     ).count()
 
+    # Top Selling Products (Today, with fallback to all-time if today is empty)
+    top_selling_query = db.session.query(
+        Product.product_name,
+        func.sum(SalesItem.quantity).label('units_sold'),
+        func.sum(SalesItem.sub_total).label('total_revenue')
+    ).join(SalesItem, Product.product_id == SalesItem.product_id)\
+     .join(SalesTransaction, SalesItem.sale_id == SalesTransaction.sale_id)\
+     .filter(SalesTransaction.status == 'Completed',
+             SalesTransaction.sale_date >= today_start,
+             SalesTransaction.sale_date <= today_end)\
+     .group_by(Product.product_id, Product.product_name)\
+     .order_by(func.sum(SalesItem.quantity).desc())\
+     .limit(5).all()
+
+    if not top_selling_query:
+        top_selling_query = db.session.query(
+            Product.product_name,
+            func.sum(SalesItem.quantity).label('units_sold'),
+            func.sum(SalesItem.sub_total).label('total_revenue')
+        ).join(SalesItem, Product.product_id == SalesItem.product_id)\
+         .join(SalesTransaction, SalesItem.sale_id == SalesTransaction.sale_id)\
+         .filter(SalesTransaction.status == 'Completed')\
+         .group_by(Product.product_id, Product.product_name)\
+         .order_by(func.sum(SalesItem.quantity).desc())\
+         .limit(5).all()
+
+    top_selling_products = [
+        {
+            'product_name': row.product_name,
+            'units_sold': int(row.units_sold or 0),
+            'total_revenue': float(row.total_revenue or 0.0)
+        }
+        for row in top_selling_query
+    ]
+
     # Recent Audit Log of Sales (Latest 15)
     recent_sales = SalesTransaction.query.order_by(
         SalesTransaction.sale_date.desc()
@@ -83,8 +118,11 @@ def index():
         'analytics/analytics.html',
         today_sales=float(today_sales),
         total_transactions=total_transactions,
+        today_transactions=total_transactions,
         aov=float(aov),
+        avg_order_value=float(aov),
         low_stock_count=low_stock_count,
+        top_selling_products=top_selling_products,
         recent_sales=recent_sales,
         category_labels=category_labels,
         category_data=category_data,
@@ -93,11 +131,23 @@ def index():
     )
 
 
+@analytics_bp.route('/api/sales-data', methods=['GET'])
 @analytics_bp.route('/api/sales-summary', methods=['GET'])
 @login_required
 @admin_required
 def sales_summary_api():
     """JSON API endpoint returning aggregated sales metrics for dynamic client charts."""
+    categories = Category.query.order_by(Category.category_name.asc()).all()
+    cat_labels = []
+    cat_values = []
+    for cat in categories:
+        val = db.session.query(
+            func.coalesce(func.sum(SalesItem.sub_total), 0.0)
+        ).join(Product, SalesItem.product_id == Product.product_id)\
+         .filter(Product.category_id == cat.category_id).scalar()
+        cat_labels.append(cat.category_name)
+        cat_values.append(float(val))
+
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
 
     daily_records = db.session.query(
@@ -115,7 +165,8 @@ def sales_summary_api():
     counts = [int(r.tx_count) for r in daily_records]
 
     return jsonify({
-        'labels': labels,
+        'labels': cat_labels if cat_labels else labels,
+        'values': cat_values if cat_values else totals,
         'revenue': totals,
         'transactions': counts
     }), 200

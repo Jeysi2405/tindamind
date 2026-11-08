@@ -133,6 +133,10 @@ def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
     try:
         name = product.product_name
+        from app.models import MLForecast, PurchaseOrderItem, SalesItem
+        MLForecast.query.filter_by(product_id=product.product_id).delete()
+        PurchaseOrderItem.query.filter_by(product_id=product.product_id).delete()
+        SalesItem.query.filter_by(product_id=product.product_id).delete()
         db.session.delete(product)
         db.session.commit()
         flash(f'Product "{name}" deleted successfully.', 'success')

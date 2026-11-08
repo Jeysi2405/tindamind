@@ -91,9 +91,9 @@ class Product(db.Model):
     risk_level = db.Column(db.String(20), default='LOW')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    sales_items = db.relationship('SalesItem', backref='product', lazy=True)
-    po_items = db.relationship('PurchaseOrderItem', backref='product', lazy=True)
-    forecasts = db.relationship('MLForecast', backref='product', lazy=True)
+    sales_items = db.relationship('SalesItem', backref='product', lazy=True, cascade='all, delete-orphan')
+    po_items = db.relationship('PurchaseOrderItem', backref='product', lazy=True, cascade='all, delete-orphan')
+    forecasts = db.relationship('MLForecast', backref='product', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"<Product {self.product_name}>"
@@ -177,3 +177,39 @@ class MLForecast(db.Model):
 
     def __repr__(self):
         return f"<MLForecast Product #{self.product_id} - {self.risk_category}>"
+
+
+class StoreSetting(db.Model):
+    __tablename__ = 'store_settings'
+
+    setting_id = db.Column(db.Integer, primary_key=True)
+    store_name = db.Column(db.String(150), nullable=False, default='TindaMind Sari-Sari Store')
+    tagline = db.Column(db.String(255), nullable=True, default='Your neighborhood daily essentials')
+    store_address = db.Column(db.String(255), nullable=True, default='123 Barangay Hall St., Metro Manila')
+    contact_number = db.Column(db.String(50), nullable=True, default='0917-123-4567')
+    receipt_footer = db.Column(db.Text, nullable=True, default='Salamat sa pagbili! Balik po kayo.')
+
+    # Digital Payments & QR Configuration
+    gcash_name = db.Column(db.String(100), nullable=True, default='Store Cashier')
+    gcash_number = db.Column(db.String(50), nullable=True, default='0917-123-4567')
+    qr_image = db.Column(db.String(255), nullable=True)
+    accept_gcash = db.Column(db.Boolean, default=True)
+    accept_cash = db.Column(db.Boolean, default=True)
+
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @classmethod
+    def get_settings(cls):
+        try:
+            settings = cls.query.first()
+        except Exception:
+            db.create_all()
+            settings = cls.query.first()
+        if not settings:
+            settings = cls()
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+
+    def __repr__(self):
+        return f"<StoreSetting {self.store_name}>"

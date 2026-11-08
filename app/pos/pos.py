@@ -26,12 +26,23 @@ def checkout():
     and sales_items, and calculates change. Supports JSON fetch payloads and form data.
     """
     if request.is_json:
-        data = request.get_json()
+        data = request.get_json() or {}
     else:
         data = request.form.to_dict()
 
-    cart_items = data.get('items', [])
-    payment_method = data.get('payment_method', 'Cash').strip()
+    cart_raw = data.get('items') or data.get('cart') or []
+    if isinstance(cart_raw, str):
+        try:
+            import json
+            cart_items = json.loads(cart_raw)
+        except Exception:
+            cart_items = []
+    elif isinstance(cart_raw, dict):
+        cart_items = list(cart_raw.values())
+    else:
+        cart_items = cart_raw
+
+    payment_method = str(data.get('payment_method', 'Cash')).strip()
     amount_tendered_raw = data.get('amount_tendered', 0.0)
 
     try:

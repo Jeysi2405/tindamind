@@ -6,7 +6,6 @@
   <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
     <div>
       <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Point of Sale (POS)</h1>
-      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
     </div>
     <div class="flex items-center gap-4 text-gray-700">
       <div class="flex items-center gap-4 text-sm font-semibold">
@@ -164,7 +163,12 @@ function updateCartQty(id, delta) {
   renderCart();
 }
 
-function removeCartItem(id) { delete cart[id]; renderCart(); }
+function removeCartItem(id) { 
+  delete cart[id]; 
+  delete cart[String(id)];
+  delete cart[Number(id)];
+  renderCart(); 
+}
 function clearCart() { 
   cart = {}; 
   const input = document.getElementById('amountTenderedInput');
@@ -244,7 +248,7 @@ function renderCart() {
           <button onclick="updateCartQty(${item.id}, -1)" class="w-6 h-6 bg-white border border-gray-200 rounded text-xs hover:bg-gray-100">-</button>
           <span class="text-xs font-bold font-mono px-1">${item.qty}</span>
           <button onclick="updateCartQty(${item.id}, 1)" class="w-6 h-6 bg-white border border-gray-200 rounded text-xs hover:bg-gray-100">+</button>
-          <button onclick="removeCartItem(${item.id})" class="text-rose-500 hover:text-rose-700 pl-1"><i class="fa-solid fa-trash text-xs"></i></button>
+          <button type="button" onclick="event.stopPropagation(); removeCartItem(${item.id});" class="text-rose-500 hover:text-rose-700 pl-1 p-1" title="Delete item"><i class="fa-solid fa-trash text-xs pointer-events-none"></i></button>
         </div>
       </div>
     `;
@@ -274,8 +278,18 @@ function executeCheckout() {
     }
   }
 
+  const formattedItems = items.map(i => ({
+    id: i.id,
+    product_id: i.id,
+    qty: i.qty,
+    quantity: i.qty,
+    price: i.price,
+    name: i.name
+  }));
+
   const payload = {
-    cart: items.map(i => ({ product_id: i.id, quantity: i.qty })),
+    items: formattedItems,
+    cart: formattedItems,
     payment_method: paymentMethod,
     amount_tendered: tendered
   };

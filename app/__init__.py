@@ -35,7 +35,7 @@ def create_app(config_class=None):
     bcrypt.init_app(app)
     login_manager.init_app(app)
 
-    login_manager.login_view = 'auth.login'
+    setattr(login_manager, 'login_view', 'auth.login')
     login_manager.login_message_category = 'info'
 
     from app.models import User
@@ -50,6 +50,7 @@ def create_app(config_class=None):
     from app.pos.pos import pos_bp
     from app.suppliers.suppliers import suppliers_bp
     from app.analytics.analytics import analytics_bp
+    from app.settings.settings import settings_bp
     from app.core.core import core_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -57,6 +58,7 @@ def create_app(config_class=None):
     app.register_blueprint(pos_bp, url_prefix='/pos')
     app.register_blueprint(suppliers_bp, url_prefix='/suppliers')
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
-    app.register_blueprint(core_bp)
+    app.register_blueprint(settings_bp, url_prefix='/settings')
+    app.register_blueprint(core_bp, url_prefix='/')
 
     return app
