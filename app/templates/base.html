@@ -11,27 +11,31 @@
 </head>
 <body class="h-full flex antialiased text-gray-800">
 
+  <!-- Sidebar Navigation -->
   <aside class="w-64 bg-white border-r border-gray-100 flex flex-col justify-between shrink-0 p-6">
     <div class="space-y-8">
-      <a href="/" class="flex items-center gap-2.5">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-8 w-auto" onerror="this.style.display='none'">
+      <a href="/pos" class="flex items-center gap-2.5">
         <i class="fa-solid fa-cash-register text-2xl text-gray-800"></i>
         <span class="text-2xl font-black text-[#F2994A] tracking-tight">TindaMind</span>
       </a>
 
+      <!-- Role-Based Navigation Menu -->
       <nav class="space-y-2">
-        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Main Menu</p>
-        
-        <a href="/" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/' else 'text-gray-500 hover:bg-gray-50' }}">
-          <i class="fa-solid fa-chart-pie w-5"></i>
-          <span>Dashboard</span>
-        </a>
+        <div class="flex items-center justify-between mb-3 px-1">
+          <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Main Menu</p>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full {% if current_role == 'cashier' %}bg-blue-50 text-blue-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+            {{ current_role|upper }}
+          </span>
+        </div>
 
-        <a href="/pos" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/pos' else 'text-gray-500 hover:bg-gray-50' }}">
+        <!-- POS / Check Out (AVAILABLE TO BOTH CASHIER & OWNER) -->
+        <a href="/pos" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path in ['/', '/pos'] else 'text-gray-500 hover:bg-gray-50' }}">
           <i class="fa-solid fa-cash-register w-5"></i>
           <span>POS / Check Out</span>
         </a>
 
+        <!-- OWNER ONLY MODULES -->
+        {% if current_role == 'owner' %}
         <a href="/inventory" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if '/inventory' in request.path else 'text-gray-500 hover:bg-gray-50' }}">
           <i class="fa-solid fa-boxes-stacked w-5"></i>
           <span>Inventory & Catalog</span>
@@ -47,38 +51,127 @@
           <span>Analytics & Sales</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:bg-gray-50 transition">
+        <a href="/settings" class="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if request.path == '/settings' else 'text-gray-500 hover:bg-gray-50' }}">
           <i class="fa-solid fa-gear w-5"></i>
           <span>Settings</span>
         </a>
+        {% endif %}
       </nav>
     </div>
 
-    <div>
-      <a href="/login" class="flex items-center gap-2.5 text-sm font-bold text-rose-500 hover:text-rose-600 transition p-2">
+    <!-- User Info & Logout Button -->
+    <div class="space-y-3 pt-4 border-t border-gray-100">
+      <div class="px-2">
+        <p class="text-xs font-bold text-gray-900 truncate">{{ current_user_name }}</p>
+        <p class="text-[11px] text-gray-400 capitalize">{{ current_role }} Account</p>
+      </div>
+      <a href="/logout" class="flex items-center gap-2.5 text-sm font-bold text-rose-500 hover:text-rose-600 transition p-2 rounded-xl hover:bg-rose-50">
         <i class="fa-solid fa-arrow-right-from-bracket rotate-180 text-lg"></i>
         <span>Logout</span>
       </a>
     </div>
   </aside>
 
+  <!-- Main Content View -->
   <main class="flex-1 overflow-y-auto p-8">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="mb-6 space-y-2 max-w-7xl">
-          {% for category, message in messages %}
-            <div class="px-4 py-3 rounded-2xl text-sm font-semibold border {% if category in ['danger', 'error'] %}bg-rose-50 border-rose-200 text-rose-600{% elif category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-600{% else %}bg-amber-50 border-amber-200 text-amber-600{% endif %}">
-              {{ message }}
-            </div>
-          {% endfor %}
+    
+    <!-- Unified Header Row: Title (Left) + Date, Time, & Bell (Right) -->
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 max-w-7xl mx-auto">
+      <div>
+        {% block header_title %}
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Point of Sale (POS)</h1>
+        <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+        {% endblock %}
+      </div>
+      
+      <div class="flex items-center gap-5 text-gray-700">
+        <!-- Real-time Dynamic Date & Time -->
+        <div class="flex items-center gap-4 text-sm font-semibold">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-gray-400"></i> 
+            <span id="global-date">-- --, ----</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-gray-400"></i> 
+            <span id="global-time">--:-- --</span>
+          </span>
         </div>
-      {% endif %}
-    {% endwith %}
 
+        <!-- System Notification Bell (OWNER ONLY) -->
+        {% if current_role == 'owner' %}
+        <div class="relative">
+          <button id="globalNotifBtn" onclick="toggleGlobalNotif()" class="relative p-2 text-gray-500 hover:text-gray-900 transition focus:outline-none">
+            <i class="fa-regular fa-bell text-xl"></i>
+            {% if system_notifications %}
+            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
+            {% endif %}
+          </button>
+
+          <div id="globalNotifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-3xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 class="font-bold text-gray-900 text-sm">Notifications</h3>
+              <span class="text-xs text-gray-400">{{ system_notifications|length if system_notifications else 0 }} alert(s)</span>
+            </div>
+            
+            <div class="max-h-80 overflow-y-auto divide-y divide-gray-50">
+              {% if system_notifications %}
+                {% for n in system_notifications %}
+                <div class="p-3 hover:bg-gray-50 flex items-start gap-3 transition">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 {% if n.type == 'danger' %}bg-rose-50 text-rose-600{% elif n.type == 'warning' %}bg-amber-50 text-amber-600{% else %}bg-blue-50 text-blue-600{% endif %}">
+                    <i class="fa-solid {% if n.type == 'danger' %}fa-circle-xmark{% elif n.type == 'warning' %}fa-triangle-exclamation{% else %}fa-truck{% endif %} text-xs"></i>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex justify-between items-center">
+                      <h4 class="text-xs font-bold text-gray-900">{{ n.title }}</h4>
+                      <span class="text-[10px] text-gray-400">{{ n.time }}</span>
+                    </div>
+                    <p class="text-[11px] text-gray-500 leading-tight mt-0.5">{{ n.message }}</p>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <p class="text-center text-gray-400 text-xs py-6">No notifications.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <!-- Main Content Container -->
     <div class="max-w-7xl mx-auto">
       {% block content %}{% endblock %}
     </div>
   </main>
 
+  <script>
+    // Live Clock Function
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('global-date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('global-time').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Toggle Notification Panel
+    function toggleGlobalNotif() {
+      const dropdown = document.getElementById('globalNotifDropdown');
+      if (dropdown) {
+        dropdown.classList.toggle('hidden');
+      }
+    }
+
+    // Close Dropdown when clicking outside
+    window.addEventListener('click', function(e) {
+      const btn = document.getElementById('globalNotifBtn');
+      const dropdown = document.getElementById('globalNotifDropdown');
+      if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+  </script>
 </body>
 </html>

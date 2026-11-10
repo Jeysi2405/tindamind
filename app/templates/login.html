@@ -1,75 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-[#FFF5EE]">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - TindaMind</title>
-    
-    <!-- Link to your static CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - TindaMind</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
+<body class="h-full flex flex-col justify-between p-8 antialiased text-gray-800 selection:bg-[#F2994A] selection:text-white">
 
-    <!-- Logo at top-left of the page -->
-    <div class="brand-header">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="TindaMind Logo" class="brand-logo-img">
-        <span class="brand-name">TindaMind</span>
-    </div>
+  <!-- Top Left Branding Logo -->
+  <header class="flex items-center gap-2.5">
+    <i class="fa-solid fa-cash-register text-3xl text-gray-800"></i>
+    <span class="text-3xl font-black text-[#F2994A] tracking-tight">TindaMind</span>
+  </header>
 
-    <!-- Fullscreen Main Container -->
-    <div class="login-wrapper">
-        
-        <!-- Left Section: Store Illustration -->
-        <div class="login-left-side">
-            <div class="illustration-container">
-                <img src="{{ url_for('static', filename='store-illustration.png') }}" alt="Sari-Sari Store" class="store-illustration-img">
+  <!-- Main Content Container: Centered Layout -->
+  <main class="flex-1 flex items-center justify-center py-6">
+    <div class="w-full max-w-4xl flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-4">
+      
+      <!-- Left Illustration Vector (Perfectly Centered & Proportional) -->
+      <div class="flex justify-center items-center shrink-0">
+        <img src="{{ url_for('static', filename='store-illustration.png') }}" 
+             alt="Sari-Sari Store Illustration" 
+             class="w-full max-w-[300px] md:max-w-[340px] object-contain drop-shadow-sm">
+      </div>
+
+      <!-- Right Login Form Card -->
+      <div class="w-full max-w-md shrink-0">
+        <div class="bg-white rounded-[32px] p-8 md:p-10 shadow-xl border border-gray-100/80 space-y-8">
+          
+          <!-- Welcome Titles -->
+          <div class="text-left space-y-1">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-[#F2994A] tracking-tight">Mabuhay!</h1>
+            <p class="text-gray-400 font-medium text-sm md:text-base">Manage your store with ease.</p>
+          </div>
+
+          <!-- Login Form -->
+          <form method="POST" action="{{ url_for('core.login') }}" class="space-y-6">
+            
+            <!-- Username Input -->
+            <div class="relative flex items-center border-b-2 border-gray-400 focus-within:border-[#F2994A] pb-2 transition">
+              <i class="fa-solid fa-user text-gray-800 text-lg w-7"></i>
+              <input type="text" name="username" required placeholder="Username" 
+                     class="w-full bg-transparent pl-2 text-gray-800 placeholder-gray-400 font-medium focus:outline-none text-sm md:text-base">
             </div>
-        </div>
 
-        <!-- Right Section: Floating Login Card -->
-        <div class="login-right-side">
-            <div class="login-floating-card">
-                <h1 class="login-title">Mabuhay!</h1>
-                <p class="login-subtitle">Manage your store with ease.</p>
-
-                <!-- Flask Flash Message Notifications -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <div class="flash-messages">
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                {% endwith %}
-
-                <form method="POST" action="{{ url_for('core.login') }}" autocomplete="on">
-                    <!-- CSRF Token (Active when CSRF protection is configured) -->
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-
-                    <div class="input-group">
-                        <span class="input-icon">👤</span>
-                        <input type="text" id="username" name="username" placeholder="Username" autocomplete="username" required>
-                    </div>
-
-                    <div class="input-group">
-                        <span class="input-icon">🔒</span>
-                        <input type="password" id="password" name="password" placeholder="Password" autocomplete="current-password" required>
-                    </div>
-
-                    <button type="submit" class="btn-submit-login">LOGIN</button>
-
-                    <div class="forgot-link-box">
-                        <a href="#">Forgot your password?</a>
-                    </div>
-                </form>
+            <!-- Password Input -->
+            <div class="relative flex items-center border-b-2 border-gray-400 focus-within:border-[#F2994A] pb-2 transition">
+              <i class="fa-solid fa-lock text-gray-800 text-lg w-7"></i>
+              <input type="password" name="password" required placeholder="Password" 
+                     class="w-full bg-transparent pl-2 text-gray-800 placeholder-gray-400 font-medium focus:outline-none text-sm md:text-base">
             </div>
+
+            <!-- Login Button -->
+            <div class="pt-2">
+              <button type="submit" class="w-full py-3.5 bg-[#F2994A] hover:bg-[#e0893b] active:scale-[0.99] text-white font-extrabold text-base tracking-wider rounded-2xl shadow-md transition">
+                LOGIN
+              </button>
+            </div>
+
+            <!-- Forgot Password Option -->
+            <div class="text-center pt-1">
+              <a href="#" onclick="alert('Please contact your store administrator to reset your password.')" class="text-xs font-semibold text-gray-400 hover:text-gray-600 transition">
+                Forgot your password?
+              </a>
+            </div>
+
+          </form>
+
         </div>
+      </div>
 
     </div>
+  </main>
+
+  <!-- Empty Footer for flex alignment -->
+  <div></div>
 
 </body>
 </html>
-

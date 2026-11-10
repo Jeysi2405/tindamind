@@ -2,21 +2,6 @@
 
 {% block content %}
 <div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Point of Sale (POS)</h1>
-      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
-    </div>
-    <div class="flex items-center gap-4 text-gray-700">
-      <div class="flex items-center gap-4 text-sm font-semibold">
-        <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-gray-400"></i> October 26, 2026</span>
-        <span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-gray-400"></i> 11:37 AM</span>
-      </div>
-      <button class="relative p-1.5 text-gray-400 hover:text-gray-700"><i class="fa-regular fa-bell text-lg"></i></button>
-    </div>
-  </div>
-
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     <!-- Left Column: Products -->
     <div class="lg:col-span-8 space-y-5">
@@ -91,6 +76,7 @@
 </div>
 
 <script>
+// POS Cart & Filter Logic
 let cart = {};
 let paymentMethod = 'QR';
 
@@ -124,8 +110,8 @@ function clearCart() { cart = {}; renderCart(); }
 
 function setPaymentMethod(method) {
   paymentMethod = method;
-  document.getElementById('btnQR').className = method === 'QR' ? "p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
-  document.getElementById('btnCash').className = method === 'Cash' ? "p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
+  document.getElementById('btnQR').className = method === 'QR' ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
+  document.getElementById('btnCash').className = method === 'Cash' ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
 }
 
 function renderCart() {
@@ -134,7 +120,7 @@ function renderCart() {
   document.getElementById('cartCount').innerText = items.reduce((acc, i) => acc + i.qty, 0);
 
   if (items.length === 0) {
-    container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">Cart is empty.</p>';
+    container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">Cart is empty. Tap products to start order.</p>';
     document.getElementById('subtotalVal').innerText = '₱0.00';
     document.getElementById('totalVal').innerText = '₱0.00';
     document.getElementById('payBtnAmount').innerText = '₱0.00';

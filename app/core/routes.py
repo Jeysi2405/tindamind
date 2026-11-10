@@ -1,4 +1,4 @@
-from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import current_app, jsonify, redirect, render_template, request, url_for, session
 from app.core import core_bp
 
 MOCK_CATEGORIES = [
@@ -144,9 +144,45 @@ MOCK_PRODUCTS = [
 ]
 
 
+# Context Processor para sa System Notifications at User Roles sa buong App
+@core_bp.context_processor
+def inject_global_data():
+    notifications_list = []
+
+    for p in MOCK_PRODUCTS:
+        if p['stock_quantity'] == 0:
+            notifications_list.append({
+                'type': 'danger',
+                'title': 'Out of Stock Alert',
+                'message': f"{p['product_name']} is completely out of stock!",
+                'time': 'Action needed'
+            })
+        elif p['stock_quantity'] <= p['reorder_level']:
+                'title': 'Low Stock Alert',
+                'message': f"{p['product_name']} has only {p['stock_quantity']} items left.",
+                'time': 'Reorder soon'
+            })
+
+    notifications_list.append({
+        'type': 'delivery',
+        'title': 'Delivery Schedule',
+        'message': 'Coca-Cola Beverages PH delivery expected today.',
+        'time': 'Scheduled'
+    })
+
+    role = session.get('user_role', 'owner')
+    user_name = session.get('user_name', 'Store Owner')
+
+    return dict(
+        system_notifications=notifications_list,
+        current_role=role,
+        current_user_name=user_name
+    )
+
+
 @core_bp.route('/')
 def index():
-    return render_template('core/dashboard.html')
+    return redirect(url_for('core.pos_view'))
 
 
 @core_bp.route('/health')
@@ -162,8 +198,26 @@ def health_check():
 @core_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        return redirect(url_for('core.index'))
+        username = request.form.get('username', '').strip().lower()
+        
+        # Pag "cashier" ang in-input sa Username field
+        if username == 'cashier':
+            session['user_role'] = 'cashier'
+            session['user_name'] = 'Store Cashier'
+        # Default o kahit anong ibang username (Admin / Owner)
+        else:
+            session['user_role'] = 'owner'
+            session['user_name'] = 'Aling Terry (Owner)'
+            
+        return redirect(url_for('core.pos_view'))
+        
     return render_template('login.html')
+
+
+@core_bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('core.login'))
 
 
 @core_bp.route('/pos')
@@ -171,8 +225,13 @@ def pos_view():
     return render_template('pos/pos.html', products=MOCK_PRODUCTS)
 
 
+# --- OWNER ONLY ROUTES (WITH DIRECT ROUTE PROTECTION) ---
+
 @core_bp.route('/inventory')
 def inventory_view():
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     search_query = request.args.get('q', '').strip().lower()
     category_filter = request.args.get('cat', '').strip()
 
@@ -203,6 +262,9 @@ def inventory_view():
 
 @core_bp.route('/inventory/add', methods=['POST'])
 def add_product():
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     new_id = len(MOCK_PRODUCTS) + 1
     name = request.form.get('product_name', 'New Product')
     cat_id = int(request.form.get('category_id', 1))
@@ -223,12 +285,14 @@ def add_product():
         'stock_quantity': int(request.form.get('stock_quantity', 10)),
         'reorder_level': int(request.form.get('reorder_level', 5))
     })
-    flash(f'Product "{name}" added successfully!', 'success')
     return redirect(url_for('core.inventory_view'))
 
 
 @core_bp.route('/inventory/edit/<int:product_id>', methods=['POST'])
 def edit_product(product_id):
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     for p in MOCK_PRODUCTS:
         if p['product_id'] == product_id:
             p['product_name'] = request.form.get('product_name', p['product_name'])
@@ -237,24 +301,39 @@ def edit_product(product_id):
             p['stock_quantity'] = int(request.form.get('stock_quantity', p['stock_quantity']))
             p['reorder_level'] = int(request.form.get('reorder_level', p['reorder_level']))
             break
-    flash('Product updated successfully!', 'success')
     return redirect(url_for('core.inventory_view'))
 
 
 @core_bp.route('/inventory/delete/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     global MOCK_PRODUCTS
     MOCK_PRODUCTS = [p for p in MOCK_PRODUCTS if p['product_id'] != product_id]
-    flash('Product removed from catalog.', 'info')
     return redirect(url_for('core.inventory_view'))
 
 
 @core_bp.route('/suppliers')
 def suppliers_view():
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     restock_items = [p for p in MOCK_PRODUCTS if p['stock_quantity'] <= p['reorder_level']]
     return render_template('suppliers/suppliers.html', suppliers=MOCK_SUPPLIERS, restock_items=restock_items)
 
 
 @core_bp.route('/analytics')
 def analytics_view():
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
     return render_template('analytics/analytics.html')
+
+
+@core_bp.route('/settings')
+def settings_view():
+    if session.get('user_role') == 'cashier':
+        return redirect(url_for('core.pos_view'))
+
+    return render_template('settings/settings.html')

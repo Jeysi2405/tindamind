@@ -1,176 +1,303 @@
 {% extends "base.html" %}
 
+{% block header_title %}
+<div>
+  <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Suppliers & Restock Management</h1>
+  <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Point of Sale (POS)</h1>
-      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+<div class="space-y-8">
+
+  <!-- 1. Partner Supplier Directory -->
+  <div class="space-y-4">
+    <div class="flex justify-between items-center">
+      <h2 class="text-lg font-bold text-gray-900">Partner Supplier Directory</h2>
+      <button onclick="openModal('addSupplierModal')" class="text-xs font-bold text-[#5CB85C] hover:underline flex items-center gap-1">
+        + Add New Supplier
+      </button>
     </div>
-    <div class="flex items-center gap-4 text-gray-700">
-      <div class="flex items-center gap-4 text-sm font-semibold">
-        <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-gray-400"></i> October 26, 2026</span>
-        <span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-gray-400"></i> 11:37 AM</span>
+
+    <div id="supplierDirectoryGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for s in suppliers %}
+      <div class="bg-white rounded-3xl p-5 border border-gray-100/80 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-building text-sm"></i>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 text-base leading-snug line-clamp-1">{{ s.supplier_name }}</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Lead time: {{ s.lead_time_days }} days</p>
+        </div>
+        <div class="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-400">
+          <p class="flex items-center gap-2"><i class="fa-solid fa-phone text-[10px]"></i> {{ s.phone }}</p>
+          <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-envelope text-[10px]"></i> {{ s.email }}</p>
+          <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-location-dot text-[10px]"></i> {{ s.address }}</p>
+        </div>
       </div>
-      <button class="relative p-1.5 text-gray-400 hover:text-gray-700"><i class="fa-regular fa-bell text-lg"></i></button>
+      {% endfor %}
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    <!-- Left Column: Products -->
-    <div class="lg:col-span-8 space-y-5">
-      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
-        <button onclick="filterCategory('All')" class="cat-pill px-5 py-2 rounded-full font-semibold bg-[#c5f87b] text-gray-900 shadow-sm transition whitespace-nowrap">All Items</button>
-        <button onclick="filterCategory('Canned Goods')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Canned Goods</button>
-        <button onclick="filterCategory('Noodles')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Noodles</button>
-        <button onclick="filterCategory('Beverages')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Beverages</button>
-        <button onclick="filterCategory('Snacks')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Snacks</button>
+  <!-- 2. Low Stock Restock Recommendations -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <span class="text-amber-500">⚠️</span> Low Stock Restock Recommendations
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">Automated reorder suggestions based on minimum threshold settings</p>
       </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-        {% for p in products %}
-        <div class="product-card bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition" data-cat="{{ p.category.category_name }}">
-          <div>
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {% if p.stock_quantity <= p.reorder_level %}bg-rose-50 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %}">
-                {{ p.stock_quantity }} left
-              </span>
-              <span class="text-[10px] text-gray-400 font-mono">TM-{{ "%03d"|format(p.product_id) }}</span>
-            </div>
-            <div class="w-full h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl font-bold text-gray-300 mb-2">
-              {{ p.product_name[:2]|upper }}
-            </div>
-            <h4 class="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{{ p.product_name }}</h4>
-          </div>
-          
-          <div class="pt-3 border-t border-gray-50 mt-3 flex items-center justify-between">
-            <span class="font-extrabold text-gray-900 text-base">₱{{ "{:,.0f}".format(p.selling_price) }}</span>
-            <button onclick="addToCart({{ p.product_id }}, '{{ p.product_name|replace("'", "\\'") }}', {{ p.selling_price }}, {{ p.stock_quantity }})" class="w-8 h-8 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 rounded-xl flex items-center justify-center font-bold shadow-sm transition">
-              +
-            </button>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
+      <button onclick="createBulkOrder()" class="px-4 py-2 bg-[#F4A838] hover:bg-[#e0972b] text-white font-bold text-xs rounded-2xl shadow-sm transition self-start sm:self-auto active:scale-95">
+        ⚡ Create Bulk Restock Order
+      </button>
     </div>
 
-    <!-- Right Column: Invoice Cart -->
-    <div class="lg:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-6">
-      <div class="border-b border-gray-100 pb-3">
-        <h2 class="text-2xl font-black text-gray-900 tracking-tight">Invoice</h2>
-        <p class="text-xs text-gray-400 mt-0.5">Total Items (<span id="cartCount">0</span>)</p>
-      </div>
-
-      <div id="cartItemsContainer" class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-        <p class="text-center text-gray-400 text-sm py-8">Cart is empty. Tap products to start order.</p>
-      </div>
-
-      <div class="space-y-2 border-t border-gray-100 pt-3 text-sm">
-        <div class="flex justify-between items-center text-gray-500"><span>Subtotal:</span><span id="subtotalVal">₱0.00</span></div>
-        <div class="flex justify-between items-center text-base font-bold text-gray-900"><span>Total:</span><span class="text-xl font-extrabold font-mono" id="totalVal">₱0.00</span></div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" onclick="setPaymentMethod('QR')" id="btnQR" class="p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1">
-          <i class="fa-solid fa-qrcode text-base"></i> QR Code
-        </button>
-        <button type="button" onclick="setPaymentMethod('Cash')" id="btnCash" class="p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1">
-          <i class="fa-solid fa-money-bill text-base"></i> Cash
-        </button>
-      </div>
-
-      <div class="grid grid-cols-3 gap-2">
-        <button type="button" onclick="clearCart()" class="py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl">Clear</button>
-        <button type="button" onclick="executeCheckout()" id="btnPay" disabled class="col-span-2 py-3 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-sm rounded-2xl shadow-sm disabled:opacity-50">
-          Pay <span id="payBtnAmount">₱0.00</span>
-        </button>
-      </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3.5 pr-4">Item Name</th>
+            <th class="py-3.5 px-4 text-center">Current Stock</th>
+            <th class="py-3.5 px-4 text-center">Suggested Reorder</th>
+            <th class="py-3.5 px-4">Preferred Supplier</th>
+            <th class="py-3.5 px-4">Est. Total Cost</th>
+            <th class="py-3.5 pl-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="restockTableBody" class="divide-y divide-gray-100">
+          {% for item in restock_items %}
+          <tr id="restock-row-{{ item.product_id }}" class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-lg shrink-0">
+                  {% if 'Soup' in item.product_name %}🥫{% elif 'Noodle' in item.product_name %}🍜{% elif 'Chip' in item.product_name %}🍟{% elif 'Juice' in item.product_name %}🧃{% else %}📦{% endif %}
+                </div>
+                <span class="font-bold text-gray-900 text-sm">{{ item.product_name }}</span>
+              </div>
+            </td>
+            <td class="py-4 px-4 text-center font-bold text-rose-500">{{ item.stock_quantity }} units</td>
+            <td class="py-4 px-4 text-center font-bold text-emerald-500">+{{ (item.reorder_level * 3) - item.stock_quantity }} units</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-600">{{ item.supplier.supplier_name }}</td>
+            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(item.cost_price * ((item.reorder_level * 3) - item.stock_quantity)) }}</td>
+            <td class="py-4 pl-4 text-right">
+              <button onclick="singleOrder('{{ item.product_name }}', '{{ item.supplier.supplier_name }}', '{{ (item.reorder_level * 3) - item.stock_quantity }}', '{{ item.cost_price * ((item.reorder_level * 3) - item.stock_quantity) }}', {{ item.product_id }})" class="px-4 py-1.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition active:scale-95">
+                Order Now
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-8 text-gray-400 text-sm">All inventory levels are currently healthy! 🎉</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
+
+  <!-- 3. Recent Purchase Orders -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+      <h2 class="text-lg font-bold text-gray-900">Recent Purchase Orders</h2>
+      <span class="text-xs font-semibold text-gray-400">Live Restock Tracking</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 pr-4">PO #</th>
+            <th class="py-3 px-4">Supplier</th>
+            <th class="py-3 px-4">Items Summary</th>
+            <th class="py-3 px-4">Date Ordered</th>
+            <th class="py-3 px-4">Total Amount</th>
+            <th class="py-3 px-4">Status</th>
+            <th class="py-3 pl-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="purchaseOrdersBody" class="divide-y divide-gray-100">
+          <tr id="po-row-1" class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4 font-mono font-bold text-gray-900">PO-2026-0041</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-700">Monde Nissin</td>
+            <td class="py-4 px-4 text-xs text-gray-500">Instant Noodles (x50)</td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-10-25</td>
+            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱575.00</td>
+            <td class="py-4 px-4 status-cell">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
+            </td>
+            <td class="py-4 pl-4 text-right action-cell">
+              <button onclick="markReceived('po-row-1')" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
+            </td>
+          </tr>
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4 font-mono font-bold text-gray-900">PO-2026-0038</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-700">Universal Robina Corp</td>
+            <td class="py-4 px-4 text-xs text-gray-500">Cheapy Cheese Flavor (x50)</td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-10-23</td>
+            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱475.00</td>
+            <td class="py-4 px-4">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>
+            </td>
+            <td class="py-4 pl-4 text-right">
+              <span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Add New Supplier -->
+<div id="addSupplierModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Add New Partner Supplier</h3>
+      <button onclick="closeModal('addSupplierModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form onsubmit="handleAddSupplier(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Company / Supplier Name</label>
+        <input type="text" id="sup_name" required placeholder="e.g. San Miguel Corp" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Lead Time (Days)</label>
+        <input type="number" id="sup_lead" required value="2" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Phone Number</label>
+        <input type="text" id="sup_phone" required placeholder="0917-000-0000" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Email Address</label>
+        <input type="email" id="sup_email" required placeholder="contact@supplier.com" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Office Address</label>
+        <input type="text" id="sup_address" required placeholder="City Address" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('addSupplierModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl hover:bg-[#b2f357]">Save Supplier</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <script>
-let cart = {};
-let paymentMethod = 'QR';
+let poCounter = 42;
 
-function filterCategory(cat) {
-  document.querySelectorAll('.cat-pill').forEach(btn => {
-    btn.classList.remove('bg-[#c5f87b]', 'font-semibold');
-    btn.classList.add('bg-white', 'text-gray-700');
-  });
-  event.target.classList.add('bg-[#c5f87b]', 'font-semibold');
-  document.querySelectorAll('.product-card').forEach(card => {
-    card.classList.toggle('hidden', cat !== 'All' && card.dataset.cat !== cat);
-  });
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// 1. Functional Add Supplier
+function handleAddSupplier(e) {
+  e.preventDefault();
+  const name = document.getElementById('sup_name').value;
+  const lead = document.getElementById('sup_lead').value;
+  const phone = document.getElementById('sup_phone').value;
+  const email = document.getElementById('sup_email').value;
+  const address = document.getElementById('sup_address').value;
+
+  const cardHTML = `
+    <div class="bg-white rounded-3xl p-5 border border-gray-100/80 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-bold text-lg">
+          <i class="fa-solid fa-building text-sm"></i>
+        </div>
+        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
+      </div>
+      <div>
+        <h3 class="font-bold text-gray-900 text-base leading-snug line-clamp-1">${name}</h3>
+        <p class="text-xs text-gray-400 mt-0.5">Lead time: ${lead} days</p>
+      </div>
+      <div class="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-400">
+        <p class="flex items-center gap-2"><i class="fa-solid fa-phone text-[10px]"></i> ${phone}</p>
+        <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-envelope text-[10px]"></i> ${email}</p>
+        <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-location-dot text-[10px]"></i> ${address}</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('supplierDirectoryGrid').insertAdjacentHTML('beforeend', cardHTML);
+  closeModal('addSupplierModal');
+  e.target.reset();
+  alert(`Supplier "${name}" successfully added to partner directory!`);
 }
 
-function addToCart(id, name, price, maxStock) {
-  if (!cart[id]) cart[id] = { id, name, price, qty: 1, maxStock };
-  else if (cart[id].qty < maxStock) cart[id].qty += 1;
-  renderCart();
+// Helper to append order to Purchase Orders
+function addPurchaseOrderRow(supplier, summary, amount) {
+  const today = new Date().toISOString().split('T')[0];
+  const rowId = 'po-row-' + poCounter;
+  const poNumber = 'PO-2026-00' + poCounter++;
+
+  const rowHTML = `
+    <tr id="${rowId}" class="hover:bg-gray-50/70 transition">
+      <td class="py-4 pr-4 font-mono font-bold text-gray-900">${poNumber}</td>
+      <td class="py-4 px-4 text-xs font-semibold text-gray-700">${supplier}</td>
+      <td class="py-4 px-4 text-xs text-gray-500">${summary}</td>
+      <td class="py-4 px-4 text-xs text-gray-400 font-mono">${today}</td>
+      <td class="py-4 px-4 font-mono font-bold text-gray-900">₱${parseFloat(amount).toFixed(2)}</td>
+      <td class="py-4 px-4 status-cell">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
+      </td>
+      <td class="py-4 pl-4 text-right action-cell">
+        <button onclick="markReceived('${rowId}')" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
+      </td>
+    </tr>
+  `;
+  document.getElementById('purchaseOrdersBody').insertAdjacentHTML('afterbegin', rowHTML);
 }
 
-function updateCartQty(id, delta) {
-  if (cart[id]) {
-    cart[id].qty += delta;
-    if (cart[id].qty <= 0) delete cart[id];
-  }
-  renderCart();
+// 2. Functional Single Restock Order
+function singleOrder(itemName, supplier, units, cost, productId) {
+  addPurchaseOrderRow(supplier, `${itemName} (x${units})`, cost);
+  
+  const row = document.getElementById(`restock-row-${productId}`);
+  if (row) row.remove();
+
+  alert(`Order for ${units} units of ${itemName} sent to ${supplier}! Check Recent Purchase Orders.`);
 }
 
-function removeCartItem(id) { delete cart[id]; renderCart(); }
-function clearCart() { cart = {}; renderCart(); }
-
-function setPaymentMethod(method) {
-  paymentMethod = method;
-  document.getElementById('btnQR').className = method === 'QR' ? "p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
-  document.getElementById('btnCash').className = method === 'Cash' ? "p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
-}
-
-function renderCart() {
-  const container = document.getElementById('cartItemsContainer');
-  const items = Object.values(cart);
-  document.getElementById('cartCount').innerText = items.reduce((acc, i) => acc + i.qty, 0);
-
-  if (items.length === 0) {
-    container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">Cart is empty.</p>';
-    document.getElementById('subtotalVal').innerText = '₱0.00';
-    document.getElementById('totalVal').innerText = '₱0.00';
-    document.getElementById('payBtnAmount').innerText = '₱0.00';
-    document.getElementById('btnPay').disabled = true;
+// 3. Functional Bulk Restock Order
+function createBulkOrder() {
+  const rows = document.querySelectorAll('#restockTableBody tr[id^="restock-row-"]');
+  if (rows.length === 0) {
+    alert('No items currently need restock!');
     return;
   }
 
-  let total = 0;
-  container.innerHTML = items.map(item => {
-    total += item.price * item.qty;
-    return `
-      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
-        <div class="flex-1 pr-2">
-          <div class="font-bold text-gray-900 text-sm">${item.name}</div>
-          <div class="text-xs text-gray-400">₱${item.price.toFixed(2)} x ${item.qty}</div>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button onclick="updateCartQty(${item.id}, -1)" class="w-6 h-6 bg-white border rounded text-xs">-</button>
-          <span class="text-xs font-bold font-mono px-1">${item.qty}</span>
-          <button onclick="updateCartQty(${item.id}, 1)" class="w-6 h-6 bg-white border rounded text-xs">+</button>
-          <button onclick="removeCartItem(${item.id})" class="text-rose-500 pl-1"><i class="fa-solid fa-trash text-xs"></i></button>
-        </div>
-      </div>
-    `;
-  }).join('');
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const itemName = cells[0].innerText.trim();
+    const unitsText = cells[2].innerText.replace('+', '').trim();
+    const supplier = cells[3].innerText.trim();
+    const costText = cells[4].innerText.replace('₱', '').replace(',', '').trim();
 
-  const formatted = '₱' + total.toFixed(2);
-  document.getElementById('subtotalVal').innerText = formatted;
-  document.getElementById('totalVal').innerText = formatted;
-  document.getElementById('payBtnAmount').innerText = formatted;
-  document.getElementById('btnPay').disabled = false;
+    addPurchaseOrderRow(supplier, `${itemName} (${unitsText})`, costText);
+    row.remove();
+  });
+
+  alert('Bulk Restock Order created successfully! All low-stock items added to Recent Purchase Orders.');
 }
 
-function executeCheckout() {
-  alert('Sale completed via ' + paymentMethod + '!');
-  clearCart();
+// 4. Functional Mark Received
+function markReceived(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) {
+    const statusCell = row.querySelector('.status-cell');
+    const actionCell = row.querySelector('.action-cell');
+
+    statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>';
+    actionCell.innerHTML = '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>';
+
+    alert('Purchase order marked as Received! Inventory updated.');
+  }
 }
 </script>
 {% endblock %}

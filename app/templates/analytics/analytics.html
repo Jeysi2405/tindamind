@@ -1,21 +1,16 @@
 {% extends "base.html" %}
 
+{% block header_title %}
+<div>
+  <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Analytics & Sales Board</h1>
+  <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
+</div>
+{% endblock %}
+
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Analytics & Sales Board</h1>
-      <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store ease.</p>
-    </div>
-    <div class="flex items-center gap-4 text-sm font-semibold text-gray-700">
-      <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-gray-400"></i> October 26, 2026</span>
-      <span class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-gray-400"></i> 11:37 AM</span>
-    </div>
-  </div>
-
   <!-- Metric Summary Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
