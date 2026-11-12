@@ -158,6 +158,8 @@ def inject_global_data():
                 'time': 'Action needed'
             })
         elif p['stock_quantity'] <= p['reorder_level']:
+            notifications_list.append({
+                'type': 'warning',
                 'title': 'Low Stock Alert',
                 'message': f"{p['product_name']} has only {p['stock_quantity']} items left.",
                 'time': 'Reorder soon'
