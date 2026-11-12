@@ -42,17 +42,17 @@
     </div>
   </div>
 
-  <!-- 2. Low Stock Restock Recommendations -->
+  <!-- 2. Stockout-Risk & Low Stock Restock Recommendations -->
   <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
       <div>
         <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <span class="text-amber-500">⚠️</span> Low Stock Restock Recommendations
+          <span class="text-amber-500">⚠️</span> Stockout-Risk Restock Recommendations
         </h2>
-        <p class="text-xs text-gray-400 mt-0.5">Automated reorder suggestions based on minimum threshold settings</p>
+        <p class="text-xs text-gray-400 mt-0.5">Live reorder suggestions synced with POS sales & minimum thresholds</p>
       </div>
       <button onclick="createBulkOrder()" class="px-4 py-2 bg-[#F4A838] hover:bg-[#e0972b] text-white font-bold text-xs rounded-2xl shadow-sm transition self-start sm:self-auto active:scale-95">
-        ⚡ Create Bulk Restock Order
+        ⚡ Create Bulk Restock PO
       </button>
     </div>
 
@@ -62,6 +62,7 @@
           <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
             <th class="py-3.5 pr-4">Item Name</th>
             <th class="py-3.5 px-4 text-center">Current Stock</th>
+            <th class="py-3.5 px-4 text-center">Stockout Risk</th>
             <th class="py-3.5 px-4 text-center">Suggested Reorder</th>
             <th class="py-3.5 px-4">Preferred Supplier</th>
             <th class="py-3.5 px-4">Est. Total Cost</th>
@@ -70,7 +71,16 @@
         </thead>
         <tbody id="restockTableBody" class="divide-y divide-gray-100">
           {% for item in restock_items %}
-          <tr id="restock-row-{{ item.product_id }}" class="hover:bg-gray-50/70 transition">
+          {% set suggested_qty = (item.reorder_level * 3) - item.stock_quantity %}
+          {% set est_cost = item.cost_price * suggested_qty %}
+          <tr id="restock-row-{{ item.product_id }}" 
+              class="restock-rec-row hover:bg-gray-50/70 transition"
+              data-id="{{ item.product_id }}"
+              data-name="{{ item.product_name }}"
+              data-base-stock="{{ item.stock_quantity }}"
+              data-reorder="{{ item.reorder_level }}"
+              data-cost="{{ item.cost_price }}"
+              data-supplier="{{ item.supplier.supplier_name }}">
             <td class="py-4 pr-4">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-lg shrink-0">
@@ -79,19 +89,28 @@
                 <span class="font-bold text-gray-900 text-sm">{{ item.product_name }}</span>
               </div>
             </td>
-            <td class="py-4 px-4 text-center font-bold text-rose-500">{{ item.stock_quantity }} units</td>
-            <td class="py-4 px-4 text-center font-bold text-emerald-500">+{{ (item.reorder_level * 3) - item.stock_quantity }} units</td>
+            <td id="restock-stock-{{ item.product_id }}" class="py-4 px-4 text-center font-bold text-rose-500">{{ item.stock_quantity }} units</td>
+            <td id="restock-risk-{{ item.product_id }}" class="py-4 px-4 text-center">
+              {% if item.stock_quantity <= (item.reorder_level * 0.75) %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600">High Risk</span>
+              {% else %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">Moderate Risk</span>
+              {% endif %}
+            </td>
+            <td id="restock-qty-{{ item.product_id }}" class="py-4 px-4 text-center font-bold text-emerald-500">+{{ suggested_qty }} units</td>
             <td class="py-4 px-4 text-xs font-semibold text-gray-600">{{ item.supplier.supplier_name }}</td>
-            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(item.cost_price * ((item.reorder_level * 3) - item.stock_quantity)) }}</td>
+            <td id="restock-cost-{{ item.product_id }}" class="py-4 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(est_cost) }}</td>
             <td class="py-4 pl-4 text-right">
-              <button onclick="singleOrder('{{ item.product_name }}', '{{ item.supplier.supplier_name }}', '{{ (item.reorder_level * 3) - item.stock_quantity }}', '{{ item.cost_price * ((item.reorder_level * 3) - item.stock_quantity) }}', {{ item.product_id }})" class="px-4 py-1.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition active:scale-95">
-                Order Now
+              <button id="restock-btn-{{ item.product_id }}"
+                      onclick="openPoPreviewModal('{{ item.product_name|replace("'", "\\'") }}', '{{ item.supplier.supplier_name|replace("'", "\\'") }}', {{ suggested_qty }}, {{ item.cost_price }}, {{ est_cost }}, {{ item.product_id }})" 
+                      class="px-4 py-1.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition active:scale-95">
+                Generate PO
               </button>
             </td>
           </tr>
           {% else %}
-          <tr>
-            <td colspan="6" class="text-center py-8 text-gray-400 text-sm">All inventory levels are currently healthy! 🎉</td>
+          <tr id="emptyRestockRow">
+            <td colspan="7" class="text-center py-8 text-gray-400 text-sm">All inventory levels are currently healthy! 🎉</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -103,7 +122,7 @@
   <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
     <div class="flex justify-between items-center border-b border-gray-100 pb-3">
       <h2 class="text-lg font-bold text-gray-900">Recent Purchase Orders</h2>
-      <span class="text-xs font-semibold text-gray-400">Live Restock Tracking</span>
+      <span class="text-xs font-semibold text-gray-400">Mark received to auto-update Inventory & POS</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -120,24 +139,25 @@
           </tr>
         </thead>
         <tbody id="purchaseOrdersBody" class="divide-y divide-gray-100">
+          <!-- Saved Live POs will prepend here -->
           <tr id="po-row-1" class="hover:bg-gray-50/70 transition">
             <td class="py-4 pr-4 font-mono font-bold text-gray-900">PO-2026-0041</td>
             <td class="py-4 px-4 text-xs font-semibold text-gray-700">Monde Nissin</td>
             <td class="py-4 px-4 text-xs text-gray-500">Instant Noodles (x50)</td>
-            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-10-25</td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-11-10</td>
             <td class="py-4 px-4 font-mono font-bold text-gray-900">₱575.00</td>
             <td class="py-4 px-4 status-cell">
               <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
             </td>
             <td class="py-4 pl-4 text-right action-cell">
-              <button onclick="markReceived('po-row-1')" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
+              <button onclick="markReceived('po-row-1', [{ productId: 2, name: 'Instant Noodles', qty: 50 }])" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
             </td>
           </tr>
           <tr class="hover:bg-gray-50/70 transition">
             <td class="py-4 pr-4 font-mono font-bold text-gray-900">PO-2026-0038</td>
             <td class="py-4 px-4 text-xs font-semibold text-gray-700">Universal Robina Corp</td>
             <td class="py-4 px-4 text-xs text-gray-500">Cheapy Cheese Flavor (x50)</td>
-            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-10-23</td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-11-08</td>
             <td class="py-4 px-4 font-mono font-bold text-gray-900">₱475.00</td>
             <td class="py-4 px-4">
               <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>
@@ -153,8 +173,8 @@
 
 </div>
 
-<!-- Modal: Add New Supplier -->
-<div id="addSupplierModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Modal 1: Add New Supplier -->
+<div id="addSupplierModal" onclick="if(event.target === this) closeModal('addSupplierModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center border-b pb-3">
       <h3 class="font-bold text-gray-900 text-lg">Add New Partner Supplier</h3>
@@ -189,105 +209,294 @@
   </div>
 </div>
 
+<!-- Modal 2: Purchase Order (PO) Document Preview & Generation -->
+<div id="poPreviewModal" onclick="if(event.target === this) closeModal('poPreviewModal')" class="hidden fixed inset-0 z-50 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="p-6 space-y-5">
+      <!-- PO Header -->
+      <div class="flex justify-between items-start border-b border-dashed border-gray-200 pb-4">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Purchase Order Slip</span>
+          <h3 id="poModalNumber" class="text-xl font-black font-mono text-gray-900 mt-2">PO-2026-0042</h3>
+          <p id="poModalDate" class="text-xs text-gray-400">Issued: --</p>
+        </div>
+        <button onclick="closeModal('poPreviewModal')" class="text-gray-400 hover:text-gray-600 print:hidden">✕</button>
+      </div>
+
+      <!-- Supplier & Store Info -->
+      <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-2xl border border-gray-100 text-xs">
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase">Vendor / Supplier</p>
+          <p id="poModalSupplier" class="font-bold text-gray-900 mt-0.5">--</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase">Deliver To</p>
+          <p class="font-bold text-gray-900 mt-0.5">TindaMind Store</p>
+        </div>
+      </div>
+
+      <!-- Editable Restock Quantity & Cost Breakdown -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-gray-700" id="poModalItemName">--</span>
+          <span class="text-gray-400 font-mono">Unit Cost: ₱<span id="poModalUnitCost">0.00</span></span>
+        </div>
+
+        <div class="flex items-center justify-between bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200/70">
+          <label class="text-xs font-bold text-gray-600">Order Quantity (Units):</label>
+          <input type="number" id="poModalQtyInput" min="1" oninput="recalculatePoTotal()" 
+                 class="w-24 text-right font-mono font-bold text-sm bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-gray-900">
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
+          <span class="text-xs font-bold text-gray-500 uppercase">Estimated PO Total</span>
+          <span id="poModalTotalCost" class="text-xl font-black font-mono text-gray-900">₱0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="bg-gray-50 px-6 py-4 flex gap-2 border-t border-gray-100 print:hidden">
+      <button type="button" onclick="window.print()" class="px-3.5 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-print"></i> Print
+      </button>
+      <button type="button" onclick="confirmGeneratePo()" class="flex-1 py-2.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-xs rounded-xl shadow-sm transition">
+        Confirm & Send PO
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
-let poCounter = 42;
+let poCounter = parseInt(localStorage.getItem('tindamind_po_counter') || '42');
+let activePoContext = {};
 
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-// 1. Functional Add Supplier
-function handleAddSupplier(e) {
-  e.preventDefault();
-  const name = document.getElementById('sup_name').value;
-  const lead = document.getElementById('sup_lead').value;
-  const phone = document.getElementById('sup_phone').value;
-  const email = document.getElementById('sup_email').value;
-  const address = document.getElementById('sup_address').value;
+// Sync Restock Recommendations Table with Live POS Stock
+function syncRestockRecommendationsWithLiveStock() {
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
 
-  const cardHTML = `
-    <div class="bg-white rounded-3xl p-5 border border-gray-100/80 shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-bold text-lg">
-          <i class="fa-solid fa-building text-sm"></i>
-        </div>
-        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
-      </div>
-      <div>
-        <h3 class="font-bold text-gray-900 text-base leading-snug line-clamp-1">${name}</h3>
-        <p class="text-xs text-gray-400 mt-0.5">Lead time: ${lead} days</p>
-      </div>
-      <div class="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-400">
-        <p class="flex items-center gap-2"><i class="fa-solid fa-phone text-[10px]"></i> ${phone}</p>
-        <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-envelope text-[10px]"></i> ${email}</p>
-        <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-location-dot text-[10px]"></i> ${address}</p>
-      </div>
-    </div>
-  `;
+  document.querySelectorAll('.restock-rec-row').forEach(row => {
+    const id = row.dataset.id;
+    const baseStock = parseInt(row.dataset.baseStock);
+    const reorderLevel = parseInt(row.dataset.reorder);
+    const unitCost = parseFloat(row.dataset.cost);
+    const itemName = row.dataset.name;
+    const supplier = row.dataset.supplier;
 
-  document.getElementById('supplierDirectoryGrid').insertAdjacentHTML('beforeend', cardHTML);
-  closeModal('addSupplierModal');
-  e.target.reset();
-  alert(`Supplier "${name}" successfully added to partner directory!`);
+    const currentStock = liveStockMap[id] !== undefined ? parseInt(liveStockMap[id]) : baseStock;
+    const suggestedQty = Math.max(10, (reorderLevel * 3) - currentStock);
+    const estCost = unitCost * suggestedQty;
+
+    const stockEl = document.getElementById(`restock-stock-${id}`);
+    const riskEl = document.getElementById(`restock-risk-${id}`);
+    const qtyEl = document.getElementById(`restock-qty-${id}`);
+    const costEl = document.getElementById(`restock-cost-${id}`);
+    const btnEl = document.getElementById(`restock-btn-${id}`);
+
+    if (stockEl) stockEl.innerText = `${currentStock} units`;
+    if (qtyEl) qtyEl.innerText = `+${suggestedQty} units`;
+    if (costEl) costEl.innerText = '₱' + estCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (riskEl) {
+      if (currentStock === 0) {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">Out of Stock</span>';
+      } else if (currentStock <= (reorderLevel * 0.75)) {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600">High Risk</span>';
+      } else {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">Moderate Risk</span>';
+      }
+    }
+
+    if (btnEl) {
+      btnEl.onclick = () => openPoPreviewModal(itemName, supplier, suggestedQty, unitCost, estCost, id);
+    }
+  });
 }
 
-// Helper to append order to Purchase Orders
-function addPurchaseOrderRow(supplier, summary, amount) {
+// 1. Functional Add Supplier (Persists across page reloads)
+function handleAddSupplier(e) {
+  e.preventDefault();
+  const supObj = {
+    name: document.getElementById('sup_name').value.trim(),
+    lead: document.getElementById('sup_lead').value,
+    phone: document.getElementById('sup_phone').value.trim(),
+    email: document.getElementById('sup_email').value.trim(),
+    address: document.getElementById('sup_address').value.trim()
+  };
+
+  const savedSuppliers = JSON.parse(localStorage.getItem('tindamind_custom_suppliers') || '[]');
+  savedSuppliers.push(supObj);
+  localStorage.setItem('tindamind_custom_suppliers', JSON.stringify(savedSuppliers));
+
+  renderCustomSuppliers();
+  closeModal('addSupplierModal');
+  e.target.reset();
+  if (typeof showToast === 'function') showToast(`Added partner supplier: ${supObj.name}`, 'success');
+}
+
+function renderCustomSuppliers() {
+  const savedSuppliers = JSON.parse(localStorage.getItem('tindamind_custom_suppliers') || '[]');
+  const grid = document.getElementById('supplierDirectoryGrid');
+  document.querySelectorAll('.custom-supplier-card').forEach(el => el.remove());
+
+  savedSuppliers.forEach(s => {
+    const cardHTML = `
+      <div class="custom-supplier-card bg-white rounded-3xl p-5 border border-emerald-200/80 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-building text-sm"></i>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 text-base leading-snug line-clamp-1">${s.name}</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Lead time: ${s.lead} days</p>
+        </div>
+        <div class="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-400">
+          <p class="flex items-center gap-2"><i class="fa-solid fa-phone text-[10px]"></i> ${s.phone}</p>
+          <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-envelope text-[10px]"></i> ${s.email}</p>
+          <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-location-dot text-[10px]"></i> ${s.address}</p>
+        </div>
+      </div>
+    `;
+    grid.insertAdjacentHTML('beforeend', cardHTML);
+  });
+}
+
+// 2. Open PO Document Preview Modal
+function openPoPreviewModal(itemName, supplier, suggestedQty, unitCost, totalCost, productId) {
+  const today = new Date().toISOString().split('T')[0];
+  const poNumber = 'PO-2026-00' + poCounter;
+
+  activePoContext = { itemName, supplier, unitCost, productId, poNumber };
+
+  document.getElementById('poModalNumber').innerText = poNumber;
+  document.getElementById('poModalDate').innerText = `Issued: ${today}`;
+  document.getElementById('poModalSupplier').innerText = supplier;
+  document.getElementById('poModalItemName').innerText = itemName;
+  document.getElementById('poModalUnitCost').innerText = parseFloat(unitCost).toFixed(2);
+  document.getElementById('poModalQtyInput').value = suggestedQty;
+  document.getElementById('poModalTotalCost').innerText = '₱' + parseFloat(totalCost).toFixed(2);
+
+  openModal('poPreviewModal');
+}
+
+function recalculatePoTotal() {
+  const qty = parseInt(document.getElementById('poModalQtyInput').value) || 0;
+  const total = qty * parseFloat(activePoContext.unitCost || 0);
+  document.getElementById('poModalTotalCost').innerText = '₱' + total.toFixed(2);
+}
+
+function confirmGeneratePo() {
+  const qty = parseInt(document.getElementById('poModalQtyInput').value) || 1;
+  const totalAmount = qty * parseFloat(activePoContext.unitCost);
+
+  saveAndRenderPurchaseOrder(
+    activePoContext.supplier,
+    `${activePoContext.itemName} (x${qty})`,
+    totalAmount,
+    [{ productId: activePoContext.productId, name: activePoContext.itemName, qty: qty }]
+  );
+
+  const row = document.getElementById(`restock-row-${activePoContext.productId}`);
+  if (row) row.remove();
+
+  closeModal('poPreviewModal');
+  if (typeof showToast === 'function') showToast(`Purchase Order sent to ${activePoContext.supplier}!`, 'success');
+}
+
+// Save & Append Purchase Order (Persists in localStorage)
+function saveAndRenderPurchaseOrder(supplier, summary, amount, itemsPayload) {
   const today = new Date().toISOString().split('T')[0];
   const rowId = 'po-row-' + poCounter;
   const poNumber = 'PO-2026-00' + poCounter++;
+  localStorage.setItem('tindamind_po_counter', String(poCounter));
 
-  const rowHTML = `
-    <tr id="${rowId}" class="hover:bg-gray-50/70 transition">
-      <td class="py-4 pr-4 font-mono font-bold text-gray-900">${poNumber}</td>
-      <td class="py-4 px-4 text-xs font-semibold text-gray-700">${supplier}</td>
-      <td class="py-4 px-4 text-xs text-gray-500">${summary}</td>
-      <td class="py-4 px-4 text-xs text-gray-400 font-mono">${today}</td>
-      <td class="py-4 px-4 font-mono font-bold text-gray-900">₱${parseFloat(amount).toFixed(2)}</td>
-      <td class="py-4 px-4 status-cell">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
-      </td>
-      <td class="py-4 pl-4 text-right action-cell">
-        <button onclick="markReceived('${rowId}')" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
-      </td>
-    </tr>
-  `;
-  document.getElementById('purchaseOrdersBody').insertAdjacentHTML('afterbegin', rowHTML);
+  const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+  savedPos.unshift({
+    rowId,
+    poNumber,
+    supplier,
+    summary,
+    dateOrdered: today,
+    amount: parseFloat(amount),
+    status: 'Pending Delivery',
+    items: itemsPayload
+  });
+  localStorage.setItem('tindamind_saved_pos', JSON.stringify(savedPos));
+  renderSavedPurchaseOrders();
 }
 
-// 2. Functional Single Restock Order
-function singleOrder(itemName, supplier, units, cost, productId) {
-  addPurchaseOrderRow(supplier, `${itemName} (x${units})`, cost);
-  
-  const row = document.getElementById(`restock-row-${productId}`);
-  if (row) row.remove();
+function renderSavedPurchaseOrders() {
+  const tbody = document.getElementById('purchaseOrdersBody');
+  document.querySelectorAll('.dynamic-po-row').forEach(el => el.remove());
 
-  alert(`Order for ${units} units of ${itemName} sent to ${supplier}! Check Recent Purchase Orders.`);
+  const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+  savedPos.slice().reverse().forEach(po => {
+    const isReceived = po.status === 'Received';
+    const itemsJsonAttr = JSON.stringify(po.items || []).replace(/"/g, '&quot;');
+    const rowHTML = `
+      <tr id="${po.rowId}" class="dynamic-po-row hover:bg-gray-50/70 transition">
+        <td class="py-4 pr-4 font-mono font-bold text-gray-900">${po.poNumber}</td>
+        <td class="py-4 px-4 text-xs font-semibold text-gray-700">${po.supplier}</td>
+        <td class="py-4 px-4 text-xs text-gray-500">${po.summary}</td>
+        <td class="py-4 px-4 text-xs text-gray-400 font-mono">${po.dateOrdered}</td>
+        <td class="py-4 px-4 font-mono font-bold text-gray-900">₱${Number(po.amount).toFixed(2)}</td>
+        <td class="py-4 px-4 status-cell">
+          ${isReceived
+            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>'
+            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>'}
+        </td>
+        <td class="py-4 pl-4 text-right action-cell">
+          ${isReceived
+            ? '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>'
+            : `<button onclick="markReceived('${po.rowId}', ${itemsJsonAttr})" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>`}
+        </td>
+      </tr>
+    `;
+    tbody.insertAdjacentHTML('afterbegin', rowHTML);
+  });
+
+  // Also restore default PO-2026-0041 state if already received
+  if (localStorage.getItem('tindamind_po1_received') === 'true') {
+    const row1 = document.getElementById('po-row-1');
+    if (row1) {
+      row1.querySelector('.status-cell').innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>';
+      row1.querySelector('.action-cell').innerHTML = '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>';
+    }
+  }
 }
 
 // 3. Functional Bulk Restock Order
 function createBulkOrder() {
   const rows = document.querySelectorAll('#restockTableBody tr[id^="restock-row-"]');
-  if (rows.length === 0) {
-    alert('No items currently need restock!');
-    return;
-  }
+  if (rows.length === 0) return;
 
   rows.forEach(row => {
-    const cells = row.querySelectorAll('td');
-    const itemName = cells[0].innerText.trim();
-    const unitsText = cells[2].innerText.replace('+', '').trim();
-    const supplier = cells[3].innerText.trim();
-    const costText = cells[4].innerText.replace('₱', '').replace(',', '').trim();
+    const id = row.dataset.id;
+    const itemName = row.dataset.name;
+    const supplier = row.dataset.supplier;
+    const qtyText = document.getElementById(`restock-qty-${id}`).innerText.replace('+', '').replace('units', '').trim();
+    const qty = parseInt(qtyText) || 10;
+    const costText = document.getElementById(`restock-cost-${id}`).innerText.replace('₱', '').replace(/,/g, '').trim();
 
-    addPurchaseOrderRow(supplier, `${itemName} (${unitsText})`, costText);
+    saveAndRenderPurchaseOrder(
+      supplier,
+      `${itemName} (x${qty})`,
+      costText,
+      [{ productId: id, name: itemName, qty: qty }]
+    );
     row.remove();
   });
 
-  alert('Bulk Restock Order created successfully! All low-stock items added to Recent Purchase Orders.');
+  if (typeof showToast === 'function') showToast('Bulk Restock Purchase Orders generated!', 'success');
 }
 
-// 4. Functional Mark Received
-function markReceived(rowId) {
+// 4. Functional Mark Received -> Automatically Adds Stock to Inventory & POS!
+function markReceived(rowId, itemsPayload = []) {
   const row = document.getElementById(rowId);
   if (row) {
     const statusCell = row.querySelector('.status-cell');
@@ -295,9 +504,53 @@ function markReceived(rowId) {
 
     statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>';
     actionCell.innerHTML = '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>';
-
-    alert('Purchase order marked as Received! Inventory updated.');
   }
+
+  // Persist received status
+  if (rowId === 'po-row-1') {
+    localStorage.setItem('tindamind_po1_received', 'true');
+  } else {
+    const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+    const targetPo = savedPos.find(p => p.rowId === rowId);
+    if (targetPo) {
+      targetPo.status = 'Received';
+      localStorage.setItem('tindamind_saved_pos', JSON.stringify(savedPos));
+    }
+  }
+
+  // Add restocked units directly into tindamind_live_stock (Updates Inventory & POS immediately!)
+  if (itemsPayload && itemsPayload.length > 0) {
+    const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+    itemsPayload.forEach(item => {
+      const restockRow = document.getElementById(`restock-row-${item.productId}`);
+      const baseStock = restockRow ? parseInt(restockRow.dataset.baseStock) : 9;
+      const currentStock = liveStockMap[item.productId] !== undefined ? parseInt(liveStockMap[item.productId]) : baseStock;
+      liveStockMap[item.productId] = currentStock + parseInt(item.qty);
+    });
+    localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+  }
+
+  syncRestockRecommendationsWithLiveStock();
+  if (typeof showToast === 'function') showToast('Delivery received! Inventory & POS stock replenished.', 'success');
+}
+
+// Initial Load & Cross-Tab POS Sync
+syncRestockRecommendationsWithLiveStock();
+renderCustomSuppliers();
+renderSavedPurchaseOrders();
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'tindamind_live_stock') {
+    syncRestockRecommendationsWithLiveStock();
+  }
+});
+
+if (window.TindaMindSync) {
+  window.TindaMindSync.subscribe(() => {
+    syncRestockRecommendationsWithLiveStock();
+    renderCustomSuppliers();
+    renderSavedPurchaseOrders();
+  });
 }
 </script>
 {% endblock %}

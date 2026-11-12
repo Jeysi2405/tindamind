@@ -13,17 +13,16 @@
   <!-- 1. Store Profile Banner Card -->
   <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="flex items-center gap-5">
-      <!-- Store Avatar Icon (From Mobile UI Mockup) -->
-      <div class="w-16 h-16 rounded-2xl bg-[#8D6E63] text-white flex items-center justify-center text-2xl font-black shadow-sm shrink-0">
-        TM
+      <div id="storeBannerAvatar" class="w-16 h-16 rounded-2xl bg-[#8D6E63] text-white flex items-center justify-center text-2xl font-black shadow-sm shrink-0">
+        AT
       </div>
       <div>
         <div class="flex items-center gap-3 flex-wrap">
-          <h2 class="text-xl font-extrabold text-gray-900">Aling Terry Store #01</h2>
+          <h2 id="storeBannerName" class="text-xl font-extrabold text-gray-900">Aling Terry Store #01</h2>
           <span class="text-xs font-bold px-3 py-1 rounded-full bg-[#D6F5D0] text-[#41A538]">Active Plan</span>
         </div>
         <p class="text-xs text-gray-400 font-medium mt-1 flex items-center gap-1.5">
-          <i class="fa-solid fa-location-dot text-gray-400"></i> Tondo, Manila
+          <i class="fa-solid fa-location-dot text-gray-400"></i> <span id="storeBannerLocation">Tondo, Manila</span>
         </p>
       </div>
     </div>
@@ -33,7 +32,7 @@
     </button>
   </div>
 
-  <!-- 2. Settings Menu List (Desktop Version without Logout) -->
+  <!-- 2. Store & Hardware Configuration -->
   <div class="bg-white rounded-3xl shadow-sm border border-gray-100/80 divide-y divide-gray-100 overflow-hidden">
     
     <!-- Store Profile & Info -->
@@ -45,6 +44,34 @@
         <div>
           <h3 class="font-bold text-gray-900 text-base group-hover:text-[#F2994A] transition">Store Profile & Info</h3>
           <p class="text-xs text-gray-400">Manage store name, contact details, and business address</p>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:translate-x-1 transition-transform"></i>
+    </button>
+
+    <!-- Staff & Role Access (RBAC) -->
+    <button onclick="openModal('staffModal')" class="w-full p-5 flex items-center justify-between hover:bg-gray-50/80 transition text-left group">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 text-xl shrink-0">
+          <i class="fa-solid fa-users-gear"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 text-base group-hover:text-[#F2994A] transition">Staff & Role Access (RBAC)</h3>
+          <p class="text-xs text-gray-400">Manage Owner & Cashier POS permissions and login accounts</p>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:translate-x-1 transition-transform"></i>
+    </button>
+
+    <!-- Inventory & ML Forecasting Rules -->
+    <button onclick="openModal('mlSettingsModal')" class="w-full p-5 flex items-center justify-between hover:bg-gray-50/80 transition text-left group">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 text-xl shrink-0">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 text-base group-hover:text-[#F2994A] transition">Inventory & ML Forecast Thresholds</h3>
+          <p class="text-xs text-gray-400">Configure low-stock alerts and 7-day demand prediction sensitivity</p>
         </div>
       </div>
       <i class="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:translate-x-1 transition-transform"></i>
@@ -78,25 +105,43 @@
       <i class="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:translate-x-1 transition-transform"></i>
     </button>
 
+    <!-- About TindaMind System -->
+    <button onclick="openModal('aboutModal')" class="w-full p-5 flex items-center justify-between hover:bg-gray-50/80 transition text-left group">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-700 text-xl shrink-0">
+          <i class="fa-solid fa-circle-info"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 text-base group-hover:text-[#F2994A] transition">About TindaMind System</h3>
+          <p class="text-xs text-gray-400">Learn more about TindaMind features, version info, and system overview</p>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:translate-x-1 transition-transform"></i>
+    </button>
+
   </div>
 
 </div>
 
-<!-- Modal 1: Edit Store Info -->
-<div id="editStoreModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Modal 1: Edit Store Info (Updates Banner Live) -->
+<div id="editStoreModal" onclick="if(event.target === this) closeModal('editStoreModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center border-b pb-3">
       <h3 class="font-bold text-gray-900 text-lg">Edit Store Profile</h3>
       <button onclick="closeModal('editStoreModal')" class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
-    <form onsubmit="event.preventDefault(); alert('Store profile updated!'); closeModal('editStoreModal');" class="space-y-3">
+    <form onsubmit="saveStoreProfile(event)" class="space-y-3">
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1">Store Name</label>
-        <input type="text" value="Aling Terry Store #01" required class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <input type="text" id="inputStoreName" value="Aling Terry Store #01" required class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1">Location / Address</label>
-        <input type="text" value="Tondo, Manila" required class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <input type="text" id="inputStoreLocation" value="Tondo, Manila" required class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Store Contact Number</label>
+        <input type="text" value="0917-555-0192" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
       </div>
       <div class="pt-3 flex justify-end gap-2 border-t">
         <button type="button" onclick="closeModal('editStoreModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
@@ -106,8 +151,70 @@
   </div>
 </div>
 
-<!-- Modal 2: Printer Setup -->
-<div id="printerModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Modal 2: Staff & Role Access (RBAC) -->
+<div id="staffModal" onclick="if(event.target === this) closeModal('staffModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Staff & Role Access (RBAC)</h3>
+      <button onclick="closeModal('staffModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+
+    <div class="space-y-2.5 text-xs">
+      <div class="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+        <div>
+          <p class="font-bold text-gray-900 text-sm">Aling Terry (Owner)</p>
+          <p class="text-gray-400">Username: <span class="font-mono text-gray-600">admin</span> • Full System Access</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full font-extrabold bg-amber-100 text-amber-700">OWNER</span>
+      </div>
+
+      <div class="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+        <div>
+          <p class="font-bold text-gray-900 text-sm">Store Cashier</p>
+          <p class="text-gray-400">Username: <span class="font-mono text-gray-600">cashier</span> • POS Terminal Only</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full font-extrabold bg-blue-100 text-blue-700">CASHIER</span>
+      </div>
+    </div>
+
+    <div class="pt-2 flex justify-end border-t">
+      <button type="button" onclick="closeModal('staffModal')" class="px-5 py-2 text-xs bg-gray-900 text-white font-bold rounded-xl">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 3: Inventory & ML Thresholds -->
+<div id="mlSettingsModal" onclick="if(event.target === this) closeModal('mlSettingsModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Inventory & ML Forecast Settings</h3>
+      <button onclick="closeModal('mlSettingsModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form onsubmit="event.preventDefault(); closeModal('mlSettingsModal');" class="space-y-3 text-sm">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Default Low-Stock Reorder Level (Units)</label>
+        <input type="number" value="10" min="1" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">ML Forecasting Horizon</label>
+        <select class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
+          <option selected>7-Day Rolling Demand Prediction (Ridge Regression)</option>
+          <option>14-Day Rolling Demand Prediction</option>
+        </select>
+      </div>
+      <div class="p-3 bg-purple-50 rounded-2xl border border-purple-100 text-xs text-purple-700">
+        <i class="fa-solid fa-sparkles mr-1"></i> Stockout risk automatically classifies products into <strong>High</strong>, <strong>Moderate</strong>, and <strong>Low</strong> risk based on daily velocity.
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('mlSettingsModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl hover:bg-[#b2f357]">Apply Rules</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 4: Printer Setup -->
+<div id="printerModal" onclick="if(event.target === this) closeModal('printerModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center border-b pb-3">
       <h3 class="font-bold text-gray-900 text-lg">Receipt Printer Setup</h3>
@@ -116,7 +223,7 @@
     <div class="space-y-3 text-sm text-gray-600">
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1">Select Printer Connection</label>
-        <select class="w-full px-3 py-2 text-sm border rounded-xl">
+        <select class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
           <option>Thermal POS Printer (58mm)</option>
           <option>Thermal POS Printer (80mm)</option>
           <option>Network / USB Printer</option>
@@ -128,13 +235,13 @@
     </div>
     <div class="pt-3 flex justify-end gap-2 border-t">
       <button type="button" onclick="closeModal('printerModal')" class="px-4 py-2 text-sm text-gray-500">Close</button>
-      <button onclick="alert('Test receipt printed!');" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl">Print Test Receipt</button>
+      <button onclick="window.print()" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl">Print Test Receipt</button>
     </div>
   </div>
 </div>
 
-<!-- Modal 3: QR Gateway Setup -->
-<div id="qrModal" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Modal 5: QR Gateway Setup -->
+<div id="qrModal" onclick="if(event.target === this) closeModal('qrModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center border-b pb-3">
       <h3 class="font-bold text-gray-900 text-lg">Payment Gateway & QR Codes</h3>
@@ -143,14 +250,60 @@
     <div class="space-y-3">
       <div class="p-4 border-2 border-dashed border-gray-200 rounded-2xl text-center space-y-2">
         <i class="fa-solid fa-qrcode text-3xl text-gray-400"></i>
-        <p class="text-xs font-semibold text-gray-600">Upload Merchant QR Code (GCash/Maya)</p>
-        <input type="file" class="hidden" id="qrInput">
-        <button type="button" onclick="document.getElementById('qrInput').click()" class="px-3 py-1.5 bg-gray-100 text-xs font-bold rounded-xl text-gray-700">Choose File</button>
+        <p id="qrFileNameLabel" class="text-xs font-semibold text-gray-600">Upload Merchant QR Code (GCash/Maya)</p>
+        <input type="file" accept="image/*" class="hidden" id="qrInput" onchange="document.getElementById('qrFileNameLabel').innerText = this.files[0] ? this.files[0].name : 'Upload Merchant QR Code (GCash/Maya)'">
+        <button type="button" onclick="document.getElementById('qrInput').click()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-xs font-bold rounded-xl text-gray-700">Choose File</button>
       </div>
     </div>
     <div class="pt-3 flex justify-end gap-2 border-t">
       <button type="button" onclick="closeModal('qrModal')" class="px-4 py-2 text-sm text-gray-500">Close</button>
-      <button onclick="alert('QR Code updated!'); closeModal('qrModal');" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl">Save QR</button>
+      <button onclick="closeModal('qrModal')" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl">Save QR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 6: About TindaMind (Product-Focused) -->
+<div id="aboutModal" onclick="if(event.target === this) closeModal('aboutModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-orange-50 text-[#F2994A] flex items-center justify-center text-lg">
+          <i class="fa-solid fa-cash-register"></i>
+        </div>
+        <div>
+          <h3 class="font-black text-gray-900 text-lg leading-tight">TindaMind</h3>
+          <p class="text-[11px] text-gray-400 font-medium">Version 1.0 • Smart Store Management</p>
+        </div>
+      </div>
+      <button onclick="closeModal('aboutModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+
+    <div class="space-y-3 text-xs text-gray-600 leading-relaxed">
+      <p>
+        <strong class="text-gray-900">TindaMind</strong> is an all-in-one Point-of-Sale (POS), inventory tracking, and predictive sales analytics platform built specifically for neighborhood sari-sari stores, bakeries, and local micro-retailers.
+      </p>
+
+      <div class="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 space-y-2">
+        <p class="font-bold text-gray-800 uppercase text-[10px] tracking-wider">Key System Capabilities</p>
+        <ul class="space-y-1.5 text-gray-600">
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>Fast POS Checkout:</strong> Cash & QR payments with instant digital receipts and automatic stock deduction.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>Smart Inventory & Restocking:</strong> Real-time low-stock alerts and automated supplier purchase orders.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>7-Day Demand Forecasting:</strong> Machine learning predictions that prevent stockouts and reduce spoilage.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pt-2 flex justify-end border-t border-gray-100">
+      <button type="button" onclick="closeModal('aboutModal')" class="px-5 py-2 text-xs bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold rounded-xl transition">Got It</button>
     </div>
   </div>
 </div>
@@ -158,5 +311,22 @@
 <script>
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function saveStoreProfile(e) {
+  e.preventDefault();
+  const newName = document.getElementById('inputStoreName').value.trim();
+  const newLoc = document.getElementById('inputStoreLocation').value.trim();
+
+  if (newName) {
+    document.getElementById('storeBannerName').innerText = newName;
+    const initials = newName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    document.getElementById('storeBannerAvatar').innerText = initials || 'TM';
+  }
+  if (newLoc) {
+    document.getElementById('storeBannerLocation').innerText = newLoc;
+  }
+
+  closeModal('editStoreModal');
+}
 </script>
 {% endblock %}

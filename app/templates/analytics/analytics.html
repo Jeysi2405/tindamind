@@ -11,13 +11,39 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <div class="space-y-6">
-  <!-- Metric Summary Cards -->
+  <!-- Period Switcher & Live Sync Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-5 py-3 rounded-3xl border border-gray-100 shadow-2xs">
+    <!-- Time Period Tabs -->
+    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <button onclick="setAnalyticsPeriod('today', this)" class="period-tab px-4 py-1.5 rounded-full text-xs font-extrabold bg-[#c5f87b] text-gray-900 shadow-2xs transition whitespace-nowrap">
+        Today (Live)
+      </button>
+      <button onclick="setAnalyticsPeriod('yesterday', this)" class="period-tab px-4 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:bg-gray-100 transition whitespace-nowrap">
+        Yesterday
+      </button>
+      <button onclick="setAnalyticsPeriod('week', this)" class="period-tab px-4 py-1.5 rounded-full text-xs font-semibold text-gray-500 hover:bg-gray-100 transition whitespace-nowrap">
+        Last 7 Days
+      </button>
+    </div>
+
+    <!-- Active Date Indicator + Reset Demo -->
+    <div class="flex items-center justify-between sm:justify-end gap-4 text-xs">
+      <span id="activePeriodBadge" class="font-mono font-semibold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+        --
+      </span>
+      <button onclick="resetAnalyticsDemo()" class="text-gray-400 hover:text-rose-500 font-semibold transition">
+        <i class="fa-solid fa-rotate-left mr-1"></i> Reset Today
+      </button>
+    </div>
+  </div>
+
+  <!-- 1. Metric Summary Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
       <div>
-        <p class="text-[11px] font-bold text-gray-400 uppercase">TODAY'S SALES</p>
-        <p class="text-2xl font-extrabold text-gray-900">₱12,820.67</p>
-        <p class="text-xs font-semibold text-emerald-600 pt-0.5">📈 +12.4%</p>
+        <p id="kpiSalesLabel" class="text-[11px] font-bold text-gray-400 uppercase">TODAY'S SALES</p>
+        <p id="statPeriodSales" class="text-2xl font-extrabold text-gray-900">₱0.00</p>
+        <p id="statSalesSubtext" class="text-xs font-semibold text-emerald-600 pt-0.5">✨ Fresh daily counter</p>
       </div>
       <div class="w-10 h-10 rounded-2xl bg-[#EAF8E6] flex items-center justify-center text-[#55B745] font-bold">₱</div>
     </div>
@@ -25,8 +51,8 @@
     <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
       <div>
         <p class="text-[11px] font-bold text-gray-400 uppercase">TOTAL TRANSACTIONS</p>
-        <p class="text-2xl font-extrabold text-gray-900">142</p>
-        <p class="text-xs font-semibold text-blue-600 pt-0.5">📈 +8 traffic</p>
+        <p id="statTotalTxns" class="text-2xl font-extrabold text-gray-900">0</p>
+        <p id="statTxnsSubtext" class="text-xs font-semibold text-blue-600 pt-0.5">🧾 Verified Receipts</p>
       </div>
       <div class="w-10 h-10 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#4DA1FF]"><i class="fa-regular fa-newspaper"></i></div>
     </div>
@@ -34,102 +60,570 @@
     <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
       <div>
         <p class="text-[11px] font-bold text-gray-400 uppercase">AVG ORDER VALUE</p>
-        <p class="text-2xl font-extrabold text-gray-900">₱104.36</p>
-        <p class="text-xs text-gray-400 pt-0.5">= Consistent</p>
+        <p id="statAvgOrder" class="text-2xl font-extrabold text-gray-900">₱0.00</p>
+        <p class="text-xs text-gray-400 pt-0.5">= Per Checkout</p>
       </div>
       <div class="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-500"><i class="fa-solid fa-receipt"></i></div>
     </div>
 
     <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-start justify-between">
       <div>
-        <p class="text-[11px] font-bold text-gray-400 uppercase">LOW STOCK REORDERS</p>
-        <p class="text-2xl font-extrabold text-[#F4A838]">4 Items</p>
-        <p class="text-xs font-semibold text-amber-600 pt-0.5">🚚 Action needed</p>
+        <p class="text-[11px] font-bold text-gray-400 uppercase">HIGH STOCKOUT RISK</p>
+        <p class="text-2xl font-extrabold text-rose-500">2 Items</p>
+        <p class="text-xs font-semibold text-amber-600 pt-0.5">🤖 ML Forecast Alert</p>
       </div>
-      <div class="w-10 h-10 rounded-2xl bg-[#FFF9E6] flex items-center justify-center text-[#F5B842]"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500"><i class="fa-solid fa-brain"></i></div>
     </div>
   </div>
 
-  <!-- Charts & Top Moving Products -->
+  <!-- 2. Charts & Top Moving Products -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     <div class="lg:col-span-8 space-y-6">
       <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
-        <h2 class="text-xl font-bold text-gray-900">Weekly Revenue by Category</h2>
+        <div class="flex justify-between items-center">
+          <h2 id="catChartTitle" class="text-xl font-bold text-gray-900">Today's Revenue by Category</h2>
+          <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">Live Sync</span>
+        </div>
         <div class="h-64 relative"><canvas id="categoryRevenueChart"></canvas></div>
       </div>
 
       <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
-        <h2 class="text-lg font-bold text-gray-900 uppercase tracking-wide">Hourly Peak Sales Density (Today)</h2>
+        <div class="flex justify-between items-center">
+          <h2 id="hourlyChartTitle" class="text-lg font-bold text-gray-900 uppercase tracking-wide">Hourly Peak Sales Density (Today)</h2>
+          <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">Units Sold / Hr</span>
+        </div>
         <div class="h-56 relative"><canvas id="hourlySalesChart"></canvas></div>
       </div>
     </div>
 
-    <div class="lg:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
-      <h2 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Top Selling Products</h2>
-      <div class="divide-y divide-gray-100">
-        <div class="py-3 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-orange-50 border flex items-center justify-center text-xs font-bold text-orange-500">LC</div>
-            <div>
-              <div class="font-bold text-gray-900 text-sm">Lucky Me! Pancit Canton</div>
-              <div class="text-xs text-gray-400">167 items sold</div>
-            </div>
-          </div>
-          <span class="font-mono font-bold text-gray-900 text-sm">₱2,576.00</span>
+    <div class="lg:col-span-4 space-y-6">
+      <!-- Top Selling Products (Dynamic per Period) -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+          <h2 class="text-lg font-bold text-gray-900">Top Selling Products</h2>
+          <span class="text-[10px] font-bold text-gray-400 uppercase">By Revenue</span>
         </div>
-
-        <div class="py-3 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-50 border flex items-center justify-center text-xs font-bold text-blue-500">HM</div>
-            <div>
-              <div class="font-bold text-gray-900 text-sm">Ham</div>
-              <div class="text-xs text-gray-400">28 cans sold</div>
-            </div>
-          </div>
-          <span class="font-mono font-bold text-gray-900 text-sm">₱2,520.00</span>
+        <div id="topProductsList" class="divide-y divide-gray-100">
+          <!-- Populated dynamically via JS -->
         </div>
       </div>
+
+      <!-- ML Model Summary Card -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-50 text-purple-600">Scikit-Learn Engine</span>
+          <span class="text-xs font-mono text-emerald-600 font-bold">R² Score: 0.91</span>
+        </div>
+        <h3 class="font-bold text-gray-900 text-base">7-Day Demand Forecasting</h3>
+        <p class="text-xs text-gray-500 leading-relaxed">
+          Analyzes 14-day rolling sales velocity using Ridge Regression to classify stockout risks before depletion occurs.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. DAILY SALES HISTORY (END-OF-DAY Z-READING ARCHIVE) -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <i class="fa-solid fa-calendar-check text-emerald-500"></i> Daily Sales History (End-of-Day Summary)
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">Automatic midnight rollover archive • Resets daily at 12:00 AM</p>
+      </div>
+      <button onclick="exportDailyHistoryCsv()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition self-start sm:self-auto">
+        <i class="fa-solid fa-file-csv text-emerald-600"></i> Export History CSV
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 pr-4">Business Date</th>
+            <th class="py-3 px-4 text-center">Transactions</th>
+            <th class="py-3 px-4 text-center">Cash Sales</th>
+            <th class="py-3 px-4 text-center">QR / E-Wallet</th>
+            <th class="py-3 px-4">Top Item</th>
+            <th class="py-3 pl-4 text-right">Gross Daily Revenue</th>
+          </tr>
+        </thead>
+        <tbody id="dailyHistoryBody" class="divide-y divide-gray-100">
+          <!-- Populated dynamically with Today + Historical Days -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. MACHINE LEARNING 7-DAY DEMAND FORECASTING & STOCKOUT RISK -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <i class="fa-solid fa-robot text-[#F2994A]"></i> ML 7-Day Rolling Demand Predictions & Stockout Risk
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">Predictive inventory insights powered by Linear / Ridge Regression</p>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] font-bold">
+        <span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600">High Risk</span>
+        <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Moderate</span>
+        <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Low Risk</span>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 pr-4">Product Name</th>
+            <th class="py-3 px-4 text-center">Current Stock</th>
+            <th class="py-3 px-4 text-center">Daily Sales Velocity</th>
+            <th class="py-3 px-4 text-center">7-Day Predicted Demand</th>
+            <th class="py-3 px-4 text-center">Est. Days Until Stockout</th>
+            <th class="py-3 pl-4 text-right">Stockout Risk Level</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-3.5 pr-4 font-bold text-gray-900">Apple Juice</td>
+            <td class="py-3.5 px-4 text-center font-mono font-bold text-gray-800">7 units</td>
+            <td class="py-3.5 px-4 text-center text-xs text-gray-500">4.2 units/day</td>
+            <td class="py-3.5 px-4 text-center font-mono font-extrabold text-[#F2994A]">29 units</td>
+            <td class="py-3.5 px-4 text-center font-bold text-rose-500">~1.6 days</td>
+            <td class="py-3.5 pl-4 text-right">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600">High Risk</span>
+            </td>
+          </tr>
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-3.5 pr-4 font-bold text-gray-900">Instant Noodles</td>
+            <td class="py-3.5 px-4 text-center font-mono font-bold text-gray-800">9 units</td>
+            <td class="py-3.5 px-4 text-center text-xs text-gray-500">4.8 units/day</td>
+            <td class="py-3.5 px-4 text-center font-mono font-extrabold text-[#F2994A]">34 units</td>
+            <td class="py-3.5 px-4 text-center font-bold text-rose-500">~1.8 days</td>
+            <td class="py-3.5 pl-4 text-right">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600">High Risk</span>
+            </td>
+          </tr>
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-3.5 pr-4 font-bold text-gray-900">Chips Classic</td>
+            <td class="py-3.5 px-4 text-center font-mono font-bold text-gray-800">13 units</td>
+            <td class="py-3.5 px-4 text-center text-xs text-gray-500">2.6 units/day</td>
+            <td class="py-3.5 px-4 text-center font-mono font-extrabold text-gray-900">18 units</td>
+            <td class="py-3.5 px-4 text-center font-bold text-amber-600">~5.0 days</td>
+            <td class="py-3.5 pl-4 text-right">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">Moderate Risk</span>
+            </td>
+          </tr>
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-3.5 pr-4 font-bold text-gray-900">MEGA Sardines In Can</td>
+            <td class="py-3.5 px-4 text-center font-mono font-bold text-gray-800">28 units</td>
+            <td class="py-3.5 px-4 text-center text-xs text-gray-500">2.1 units/day</td>
+            <td class="py-3.5 px-4 text-center font-mono font-extrabold text-gray-900">15 units</td>
+            <td class="py-3.5 px-4 text-center font-bold text-emerald-600">~13.3 days</td>
+            <td class="py-3.5 pl-4 text-right">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">Low Risk</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. TRANSACTION AUDITING LOG (FILTERED BY SELECTED PERIOD) -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+      <div>
+        <h2 id="auditLogTitle" class="text-lg font-bold text-gray-900">Transaction Auditing Log (Today)</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Chronological ledger of verified POS checkout receipts</p>
+      </div>
+      <div class="relative w-full sm:w-64">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+        <input type="text" id="auditSearchInput" onkeyup="filterAuditLog()" placeholder="Search TXN # or Cashier..." 
+               class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200/80 rounded-full text-xs font-medium text-gray-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 pr-4">Transaction ID</th>
+            <th class="py-3 px-4">Date & Time</th>
+            <th class="py-3 px-4">Cashier</th>
+            <th class="py-3 px-4">Items Sold</th>
+            <th class="py-3 px-4">Payment</th>
+            <th class="py-3 pl-4 text-right">Total Amount</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody" class="divide-y divide-gray-100">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
 <script>
-new Chart(document.getElementById('categoryRevenueChart').getContext('2d'), {
-  type: 'bar',
-  data: {
-    labels: ['Snacks', 'Beverages', 'Canned Goods', 'Noodles'],
-    datasets: [{
-      data: [9439.00, 8286.78, 6769.00, 5763.00],
-      backgroundColor: ['#9df079', '#E8B3F5', '#CDE5FE', '#FF8F80'],
-      borderRadius: 12,
-      barThickness: 20
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
+let currentPeriod = 'today';
+let categoryChartInstance = null;
+let hourlyChartInstance = null;
+
+function getLocalDateKey(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getYesterdayDateKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getLocalDateKey(d);
+}
+
+// Historical Archive Data (Yesterday & Past Week)
+const YESTERDAY_ARCHIVE = {
+  sales: 4285.50,
+  txns: 48,
+  cashSales: 2640.50,
+  qrSales: 1645.00,
+  categories: { 'Snacks': 1340.00, 'Beverages': 1120.50, 'Canned Goods': 985.00, 'Noodles': 840.00 },
+  hourly: { '7 AM': 12, '9 AM': 28, '12 PM': 45, '3 PM': 22, '5 PM': 52, '7 PM': 38, '9 PM': 19 },
+  products: [
+    { name: 'Instant Noodles', qty: 62, revenue: 806.00, badgeColor: 'bg-orange-50 text-orange-500' },
+    { name: 'Ham', qty: 8, revenue: 720.00, badgeColor: 'bg-blue-50 text-blue-500' },
+    { name: 'Apple Juice', qty: 34, revenue: 544.00, badgeColor: 'bg-emerald-50 text-emerald-500' }
+  ],
+  logs: [
+    { txnId: '#TM-849201', timestamp: 'Yesterday • 08:15 PM', cashier: 'Store Cashier', itemsSummary: 'Instant Noodles (x4), Apple Juice (x2)', paymentMethod: 'QR Code', total: 84.00 },
+    { txnId: '#TM-849198', timestamp: 'Yesterday • 05:40 PM', cashier: 'Store Cashier', itemsSummary: 'Ham (x1), MEGA Sardines In Can (x2)', paymentMethod: 'Cash', total: 142.00 },
+    { txnId: '#TM-849190', timestamp: 'Yesterday • 12:20 PM', cashier: 'Aling Terry (Owner)', itemsSummary: 'Chips Classic (x3), Vegetable Soup (x2)', paymentMethod: 'Cash', total: 127.00 }
+  ]
+};
+
+const PAST_WEEK_HISTORY_ROWS = [
+  { dateLabel: 'Yesterday', txns: 48, cash: 2640.50, qr: 1645.00, topItem: 'Instant Noodles', total: 4285.50 },
+  { dateLabel: '2 Days Ago', txns: 54, cash: 3120.00, qr: 1790.00, topItem: 'Ham', total: 4910.00 },
+  { dateLabel: '3 Days Ago', txns: 41, cash: 2150.00, qr: 1430.00, topItem: 'Apple Juice', total: 3580.00 },
+  { dateLabel: '4 Days Ago', txns: 60, cash: 3480.00, qr: 1840.00, topItem: 'Instant Noodles', total: 5320.00 }
+];
+
+function setAnalyticsPeriod(period, btnEl) {
+  currentPeriod = period;
+  document.querySelectorAll('.period-tab').forEach(btn => {
+    btn.classList.remove('bg-[#c5f87b]', 'font-extrabold', 'text-gray-900', 'shadow-2xs');
+    btn.classList.add('font-semibold', 'text-gray-500');
+  });
+  btnEl.classList.remove('font-semibold', 'text-gray-500');
+  btnEl.classList.add('bg-[#c5f87b]', 'font-extrabold', 'text-gray-900', 'shadow-2xs');
+
+  renderRealTimeAnalytics();
+}
+
+function renderRealTimeAnalytics() {
+  const todayKey = getLocalDateKey(new Date());
+  const yesterdayKey = getYesterdayDateKey();
+  const allSavedSales = JSON.parse(localStorage.getItem('tindamind_live_sales') || '[]');
+
+  // Filter live sales strictly by today's calendar date (Automatic Daily Reset at Midnight!)
+  const todaysLiveSales = allSavedSales.filter(s => s.dateKey === todayKey);
+  const yesterdaysLiveSales = allSavedSales.filter(s => s.dateKey === yesterdayKey);
+
+  // Compute Today's Live Totals (Starts at ₱0.00!)
+  let todayTotalSales = 0;
+  let todayCashSales = 0;
+  let todayQrSales = 0;
+  let todayCatTotals = { 'Snacks': 0, 'Beverages': 0, 'Canned Goods': 0, 'Noodles': 0 };
+  let todayHourlyTotals = { '7 AM': 0, '9 AM': 0, '12 PM': 0, '3 PM': 0, '5 PM': 0, '7 PM': 0, '9 PM': 0 };
+  let todayProductStats = {};
+
+  todaysLiveSales.forEach(sale => {
+    todayTotalSales += sale.total;
+    if (sale.paymentMethod === 'Cash') todayCashSales += sale.total;
+    else todayQrSales += sale.total;
+
+    const hr = sale.hourLabel;
+    const unitsInSale = sale.items.reduce((sum, i) => sum + i.qty, 0);
+    todayHourlyTotals[hr] = (todayHourlyTotals[hr] || 0) + unitsInSale;
+
+    sale.items.forEach(item => {
+      if (todayCatTotals[item.category] !== undefined) {
+        todayCatTotals[item.category] += item.revenue;
+      }
+      if (!todayProductStats[item.name]) {
+        todayProductStats[item.name] = { name: item.name, qty: 0, revenue: 0, badgeColor: 'bg-emerald-50 text-emerald-600' };
+      }
+      todayProductStats[item.name].qty += item.qty;
+      todayProductStats[item.name].revenue += item.revenue;
+    });
+  });
+
+  // Determine active dataset based on selected period tab
+  let displaySales = 0;
+  let displayTxns = 0;
+  let displayCatTotals = {};
+  let displayHourlyTotals = {};
+  let displayProducts = [];
+  let displayLogs = [];
+
+  const todayFormattedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (currentPeriod === 'today') {
+    document.getElementById('activePeriodBadge').innerText = `Today • ${todayFormattedDate}`;
+    document.getElementById('kpiSalesLabel').innerText = "TODAY'S SALES";
+    document.getElementById('statSalesSubtext').innerText = todaysLiveSales.length === 0 ? "✨ Fresh daily counter (₱0.00)" : `📈 +${todaysLiveSales.length} order(s) today`;
+    document.getElementById('catChartTitle').innerText = "Today's Revenue by Category";
+    document.getElementById('hourlyChartTitle').innerText = "Hourly Peak Sales Density (Today)";
+    document.getElementById('auditLogTitle').innerText = "Transaction Auditing Log (Today)";
+
+    displaySales = todayTotalSales;
+    displayTxns = todaysLiveSales.length;
+    displayCatTotals = todayCatTotals;
+    displayHourlyTotals = todayHourlyTotals;
+    displayProducts = Object.values(todayProductStats).sort((a, b) => b.revenue - a.revenue).slice(0, 4);
+    displayLogs = todaysLiveSales.map(s => ({
+      txnId: s.txnId,
+      timestamp: s.timestamp,
+      cashier: s.cashier,
+      itemsSummary: s.items.map(i => `${i.name} (x${i.qty})`).join(', '),
+      paymentMethod: s.paymentMethod,
+      total: s.total,
+      isNew: true
+    }));
+
+  } else if (currentPeriod === 'yesterday') {
+    const yDate = new Date();
+    yDate.setDate(yDate.getDate() - 1);
+    document.getElementById('activePeriodBadge').innerText = `Yesterday • ${yDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    document.getElementById('kpiSalesLabel').innerText = "YESTERDAY'S SALES";
+    document.getElementById('statSalesSubtext').innerText = "📁 Archived Z-Reading";
+    document.getElementById('catChartTitle').innerText = "Yesterday's Revenue by Category";
+    document.getElementById('hourlyChartTitle').innerText = "Hourly Peak Sales Density (Yesterday)";
+    document.getElementById('auditLogTitle').innerText = "Transaction Auditing Log (Yesterday)";
+
+    displaySales = YESTERDAY_ARCHIVE.sales;
+    displayTxns = YESTERDAY_ARCHIVE.txns;
+    displayCatTotals = YESTERDAY_ARCHIVE.categories;
+    displayHourlyTotals = YESTERDAY_ARCHIVE.hourly;
+    displayProducts = YESTERDAY_ARCHIVE.products;
+    displayLogs = YESTERDAY_ARCHIVE.logs;
+
+  } else {
+    // Last 7 Days (Combines Today's Live Sales + Past 7 Days Archive)
+    document.getElementById('activePeriodBadge').innerText = "Last 7 Days (Rolling)";
+    document.getElementById('kpiSalesLabel').innerText = "7-DAY GROSS SALES";
+    document.getElementById('statSalesSubtext').innerText = "📊 Weekly Consolidated";
+    document.getElementById('catChartTitle').innerText = "7-Day Revenue by Category";
+    document.getElementById('hourlyChartTitle').innerText = "7-Day Average Hourly Sales Density";
+    document.getElementById('auditLogTitle').innerText = "Recent 7-Day Transaction Ledger";
+
+    displaySales = 28450.50 + todayTotalSales;
+    displayTxns = 312 + todaysLiveSales.length;
+    displayCatTotals = {
+      'Snacks': 8920.00 + todayCatTotals['Snacks'],
+      'Beverages': 7640.50 + todayCatTotals['Beverages'],
+      'Canned Goods': 6310.00 + todayCatTotals['Canned Goods'],
+      'Noodles': 5580.00 + todayCatTotals['Noodles']
+    };
+    displayHourlyTotals = { '7 AM': 65, '9 AM': 140, '12 PM': 230, '3 PM': 115, '5 PM': 275, '7 PM': 210, '9 PM': 130 };
+    displayProducts = [
+      { name: 'Instant Noodles', qty: 342, revenue: 4446.00, badgeColor: 'bg-orange-50 text-orange-500' },
+      { name: 'Ham', qty: 48, revenue: 4320.00, badgeColor: 'bg-blue-50 text-blue-500' },
+      { name: 'Apple Juice', qty: 215, revenue: 3440.00, badgeColor: 'bg-emerald-50 text-emerald-500' },
+      { name: 'MEGA Sardines In Can', qty: 118, revenue: 3068.00, badgeColor: 'bg-purple-50 text-purple-500' }
+    ];
+    displayLogs = [
+      ...todaysLiveSales.map(s => ({
+        txnId: s.txnId, timestamp: s.timestamp, cashier: s.cashier,
+        itemsSummary: s.items.map(i => `${i.name} (x${i.qty})`).join(', '),
+        paymentMethod: s.paymentMethod, total: s.total, isNew: true
+      })),
+      ...YESTERDAY_ARCHIVE.logs
+    ];
+  }
+
+  // 1. Update KPI Cards
+  document.getElementById('statPeriodSales').innerText = '₱' + displaySales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('statTotalTxns').innerText = displayTxns;
+  const avgVal = displayTxns > 0 ? (displaySales / displayTxns) : 0;
+  document.getElementById('statAvgOrder').innerText = '₱' + avgVal.toFixed(2);
+
+  // 2. Update Category Chart
+  const catLabels = Object.keys(displayCatTotals);
+  const catValues = Object.values(displayCatTotals);
+
+  if (categoryChartInstance) {
+    categoryChartInstance.data.labels = catLabels;
+    categoryChartInstance.data.datasets[0].data = catValues;
+    categoryChartInstance.update();
+  } else {
+    categoryChartInstance = new Chart(document.getElementById('categoryRevenueChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: catLabels,
+        datasets: [{
+          data: catValues,
+          backgroundColor: ['#9df079', '#E8B3F5', '#CDE5FE', '#FF8F80'],
+          borderRadius: 12,
+          barThickness: 20
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false }, beginAtZero: true }, y: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // 3. Update Hourly Peak Chart
+  const hourLabels = Object.keys(displayHourlyTotals);
+  const hourValues = Object.values(displayHourlyTotals);
+
+  if (hourlyChartInstance) {
+    hourlyChartInstance.data.labels = hourLabels;
+    hourlyChartInstance.data.datasets[0].data = hourValues;
+    hourlyChartInstance.update();
+  } else {
+    hourlyChartInstance = new Chart(document.getElementById('hourlySalesChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: hourLabels,
+        datasets: [{
+          data: hourValues,
+          backgroundColor: ['#FF8F80', '#DCEBFE', '#8EE469', '#E8B3F5', '#8EE469', '#DCEBFE', '#8EE469', '#F2994A'],
+          borderRadius: 12
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { display: false, beginAtZero: true }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // 4. Update Top Selling Products List
+  const topListEl = document.getElementById('topProductsList');
+  if (displayProducts.length === 0) {
+    topListEl.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">No sales recorded yet for this period. Complete a POS checkout to see live rankings!</p>`;
+  } else {
+    topListEl.innerHTML = displayProducts.map(p => `
+      <div class="py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl ${p.badgeColor} border flex items-center justify-center text-xs font-bold">
+            ${p.name.substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div class="font-bold text-gray-900 text-sm">${p.name}</div>
+            <div class="text-xs text-gray-400">${p.qty} items sold</div>
+          </div>
+        </div>
+        <span class="font-mono font-bold text-gray-900 text-sm">₱${p.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
+    `).join('');
+  }
+
+  // 5. Update Daily Sales History (Z-Reading Summary Table)
+  const todayTopProduct = Object.values(todayProductStats).sort((a, b) => b.revenue - a.revenue)[0];
+  const todaySummaryRow = `
+    <tr class="bg-emerald-50/30 font-medium">
+      <td class="py-3.5 pr-4 font-bold text-gray-900">
+        Today (${todayFormattedDate})
+        <span class="ml-1.5 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">In Progress</span>
+      </td>
+      <td class="py-3.5 px-4 text-center font-mono font-bold text-gray-800">${todaysLiveSales.length}</td>
+      <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-600">₱${todayCashSales.toFixed(2)}</td>
+      <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-600">₱${todayQrSales.toFixed(2)}</td>
+      <td class="py-3.5 px-4 text-xs font-semibold text-gray-700">${todayTopProduct ? todayTopProduct.name : '—'}</td>
+      <td class="py-3.5 pl-4 text-right font-mono font-extrabold text-gray-900">₱${todayTotalSales.toFixed(2)}</td>
+    </tr>
+  `;
+
+  const pastSummaryRows = PAST_WEEK_HISTORY_ROWS.map(r => `
+    <tr class="hover:bg-gray-50/70 transition">
+      <td class="py-3.5 pr-4 font-semibold text-gray-800">${r.dateLabel}</td>
+      <td class="py-3.5 px-4 text-center font-mono text-gray-600">${r.txns}</td>
+      <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-500">₱${r.cash.toFixed(2)}</td>
+      <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-500">₱${r.qr.toFixed(2)}</td>
+      <td class="py-3.5 px-4 text-xs text-gray-600">${r.topItem}</td>
+      <td class="py-3.5 pl-4 text-right font-mono font-bold text-gray-900">₱${r.total.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('dailyHistoryBody').innerHTML = todaySummaryRow + pastSummaryRows;
+
+  // 6. Update Transaction Auditing Log Table
+  const auditBody = document.getElementById('auditTableBody');
+  if (displayLogs.length === 0) {
+    auditBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-400 text-xs py-8">No transactions recorded yet for Today. Checkout an order in POS to see live receipts here.</td></tr>`;
+  } else {
+    auditBody.innerHTML = displayLogs.map(row => `
+      <tr class="audit-row hover:bg-gray-50/70 transition ${row.isNew ? 'bg-emerald-50/20' : ''}">
+        <td class="py-3.5 pr-4 font-mono font-bold text-gray-900">
+          ${row.txnId}
+          ${row.isNew ? '<span class="ml-1.5 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Live</span>' : ''}
+        </td>
+        <td class="py-3.5 px-4 text-xs text-gray-500 font-mono">${row.timestamp}</td>
+        <td class="py-3.5 px-4 text-xs font-semibold text-gray-700">${row.cashier}</td>
+        <td class="py-3.5 px-4 text-xs text-gray-500">${row.itemsSummary}</td>
+        <td class="py-3.5 px-4">
+          <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${row.paymentMethod === 'QR Code' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}">
+            ${row.paymentMethod}
+          </span>
+        </td>
+        <td class="py-3.5 pl-4 text-right font-mono font-bold text-gray-900">₱${row.total.toFixed(2)}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function filterAuditLog() {
+  const query = document.getElementById('auditSearchInput').value.toLowerCase().trim();
+  document.querySelectorAll('.audit-row').forEach(row => {
+    row.classList.toggle('hidden', !row.innerText.toLowerCase().includes(query));
+  });
+}
+
+function resetAnalyticsDemo() {
+  localStorage.removeItem('tindamind_live_sales');
+  renderRealTimeAnalytics();
+}
+
+function exportDailyHistoryCsv() {
+  const rows = [
+    ['Business Date', 'Transactions', 'Cash Sales', 'QR Sales', 'Top Item', 'Gross Revenue']
+  ];
+  document.querySelectorAll('#dailyHistoryBody tr').forEach(tr => {
+    const cols = Array.from(tr.querySelectorAll('td')).map(td => `"${td.innerText.replace(/\n/g, ' ').trim()}"`);
+    rows.push(cols);
+  });
+
+  const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `TindaMind_Sales_History_${getLocalDateKey(new Date())}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// Initial render
+renderRealTimeAnalytics();
+
+// Auto-update immediately when POS checkout happens in another tab
+window.addEventListener('storage', function(e) {
+  if (e.key === 'tindamind_live_sales') {
+    renderRealTimeAnalytics();
   }
 });
 
-new Chart(document.getElementById('hourlySalesChart').getContext('2d'), {
-  type: 'bar',
-  data: {
-    labels: ['7 AM', '8 AM', '12 PM', '2 PM', '5 PM', '7 PM', '9 PM', '11 PM', '1 AM'],
-    datasets: [{
-      data: [20, 65, 95, 45, 100, 80, 95, 65, 35],
-      backgroundColor: ['#FF8F80', '#DCEBFE', '#8EE469', '#E8B3F5', '#8EE469', '#DCEBFE', '#8EE469', '#DCEBFE', '#E8B3F5'],
-      borderRadius: 12
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: { y: { display: false }, x: { grid: { display: false } } }
-  }
-});
+if (window.TindaMindSync) {
+  window.TindaMindSync.subscribe(() => renderRealTimeAnalytics());
+}
 </script>
 {% endblock %}

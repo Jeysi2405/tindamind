@@ -3,22 +3,41 @@
 {% block content %}
 <div class="space-y-6">
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    <!-- Left Column: Products -->
+    
+    <!-- Left Column: Search, Categories & Products -->
     <div class="lg:col-span-8 space-y-5">
-      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
-        <button onclick="filterCategory('All')" class="cat-pill px-5 py-2 rounded-full font-semibold bg-[#c5f87b] text-gray-900 shadow-sm transition whitespace-nowrap">All Items</button>
-        <button onclick="filterCategory('Canned Goods')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Canned Goods</button>
-        <button onclick="filterCategory('Noodles')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Noodles</button>
-        <button onclick="filterCategory('Beverages')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Beverages</button>
-        <button onclick="filterCategory('Snacks')" class="cat-pill px-5 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Snacks</button>
+      
+      <!-- Search Bar + Category Pills -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-64 shrink-0">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+          <input type="text" id="posSearchInput" onkeyup="filterProducts()" placeholder="Search product name..." 
+                 class="w-full pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-full text-sm font-medium text-gray-800 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
+          <button onclick="filterCategory('All', this)" class="cat-pill px-4 py-2 rounded-full font-semibold bg-[#c5f87b] text-gray-900 shadow-sm transition whitespace-nowrap">All Items</button>
+          <button onclick="filterCategory('Canned Goods', this)" class="cat-pill px-4 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Canned Goods</button>
+          <button onclick="filterCategory('Noodles', this)" class="cat-pill px-4 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Noodles</button>
+          <button onclick="filterCategory('Beverages', this)" class="cat-pill px-4 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Beverages</button>
+          <button onclick="filterCategory('Snacks', this)" class="cat-pill px-4 py-2 rounded-full font-medium bg-white text-gray-700 border border-gray-100 transition whitespace-nowrap">Snacks</button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+      <!-- Products Grid -->
+      <div id="productsGrid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
         {% for p in products %}
-        <div class="product-card bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition" data-cat="{{ p.category.category_name }}">
+        <div id="product-card-{{ p.product_id }}" 
+             class="product-card bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition" 
+             data-cat="{{ p.category.category_name }}"
+             data-name="{{ p.product_name|lower }}"
+             data-stock="{{ p.stock_quantity }}"
+             data-reorder="{{ p.reorder_level }}">
           <div>
             <div class="flex justify-between items-start mb-2">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {% if p.stock_quantity <= p.reorder_level %}bg-rose-50 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %}">
+              <span id="stock-badge-{{ p.product_id }}" class="text-[10px] font-bold px-2 py-0.5 rounded-full {% if p.stock_quantity == 0 %}bg-gray-100 text-gray-400{% elif p.stock_quantity <= p.reorder_level %}bg-rose-50 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %}">
                 {{ p.stock_quantity }} left
               </span>
               <span class="text-[10px] text-gray-400 font-mono">TM-{{ "%03d"|format(p.product_id) }}</span>
@@ -31,7 +50,10 @@
           
           <div class="pt-3 border-t border-gray-50 mt-3 flex items-center justify-between">
             <span class="font-extrabold text-gray-900 text-base">₱{{ "{:,.0f}".format(p.selling_price) }}</span>
-            <button onclick="addToCart({{ p.product_id }}, '{{ p.product_name|replace("'", "\\'") }}', {{ p.selling_price }}, {{ p.stock_quantity }})" class="w-8 h-8 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 rounded-xl flex items-center justify-center font-bold shadow-sm transition">
+            <button id="add-btn-{{ p.product_id }}" 
+                    onclick="addToCart('{{ p.product_id }}', '{{ p.product_name|replace("'", "\\'") }}', {{ p.selling_price }}, '{{ p.category.category_name }}')" 
+                    {% if p.stock_quantity == 0 %}disabled{% endif %}
+                    class="w-8 h-8 bg-[#9df079] hover:bg-[#8ee469] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 rounded-xl flex items-center justify-center font-bold shadow-sm transition">
               +
             </button>
           </div>
@@ -41,33 +63,53 @@
     </div>
 
     <!-- Right Column: Invoice Cart -->
-    <div class="lg:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-6">
-      <div class="border-b border-gray-100 pb-3">
-        <h2 class="text-2xl font-black text-gray-900 tracking-tight">Invoice</h2>
-        <p class="text-xs text-gray-400 mt-0.5">Total Items (<span id="cartCount">0</span>)</p>
+    <div class="lg:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+      <div class="border-b border-gray-100 pb-3 flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-black text-gray-900 tracking-tight">Invoice</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Total Items (<span id="cartCount">0</span>)</p>
+        </div>
+        <span class="text-[11px] font-mono bg-gray-50 text-gray-500 px-2.5 py-1 rounded-lg border border-gray-100">#TXN-NEW</span>
       </div>
 
-      <div id="cartItemsContainer" class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+      <!-- Cart Items List -->
+      <div id="cartItemsContainer" class="space-y-3 max-h-[280px] overflow-y-auto pr-1">
         <p class="text-center text-gray-400 text-sm py-8">Cart is empty. Tap products to start order.</p>
       </div>
 
+      <!-- Totals Breakdown -->
       <div class="space-y-2 border-t border-gray-100 pt-3 text-sm">
         <div class="flex justify-between items-center text-gray-500"><span>Subtotal:</span><span id="subtotalVal">₱0.00</span></div>
         <div class="flex justify-between items-center text-base font-bold text-gray-900"><span>Total:</span><span class="text-xl font-extrabold font-mono" id="totalVal">₱0.00</span></div>
       </div>
 
+      <!-- Payment Method Selector -->
       <div class="grid grid-cols-2 gap-2">
-        <button type="button" onclick="setPaymentMethod('QR')" id="btnQR" class="p-3 rounded-2xl border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1">
+        <button type="button" onclick="setPaymentMethod('QR')" id="btnQR" class="p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1 transition">
           <i class="fa-solid fa-qrcode text-base"></i> QR Code
         </button>
-        <button type="button" onclick="setPaymentMethod('Cash')" id="btnCash" class="p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1">
+        <button type="button" onclick="setPaymentMethod('Cash')" id="btnCash" class="p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1 transition">
           <i class="fa-solid fa-money-bill text-base"></i> Cash
         </button>
       </div>
 
+      <!-- Cash Tendered Input -->
+      <div id="cashInputSection" class="hidden bg-gray-50 p-3.5 rounded-2xl border border-gray-100 space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-gray-600">Cash Tendered (₱):</label>
+          <input type="number" id="cashReceivedInput" oninput="calculateChange()" placeholder="0.00" min="0" step="0.01"
+                 class="w-28 text-right font-mono font-bold text-sm bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-gray-900">
+        </div>
+        <div class="flex items-center justify-between text-xs pt-1 border-t border-gray-200/60">
+          <span class="font-semibold text-gray-500">Change:</span>
+          <span id="changeDisplay" class="font-mono font-extrabold text-emerald-600 text-sm">₱0.00</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
       <div class="grid grid-cols-3 gap-2">
-        <button type="button" onclick="clearCart()" class="py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl">Clear</button>
-        <button type="button" onclick="executeCheckout()" id="btnPay" disabled class="col-span-2 py-3 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-sm rounded-2xl shadow-sm disabled:opacity-50">
+        <button type="button" onclick="clearCart()" class="py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl transition">Clear</button>
+        <button type="button" onclick="executeCheckout()" id="btnPay" disabled class="col-span-2 py-3 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-sm rounded-2xl shadow-sm disabled:opacity-50 transition">
           Pay <span id="payBtnAmount">₱0.00</span>
         </button>
       </div>
@@ -75,43 +117,322 @@
   </div>
 </div>
 
+<!-- QR CODE PAYMENT MODAL -->
+<div id="qrPaymentModal" onclick="if(event.target === this) closeQrModal()" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-5">
+    <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <h3 class="font-extrabold text-gray-900 text-sm">Scan QR to Pay</h3>
+      </div>
+      <button type="button" onclick="closeQrModal()" class="text-gray-400 hover:text-gray-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="space-y-1">
+      <p class="text-xs text-gray-400 font-medium">Amount Due</p>
+      <p id="qrAmountDisplay" class="text-3xl font-black font-mono text-gray-900">₱0.00</p>
+    </div>
+
+    <div class="bg-gray-50 p-5 rounded-3xl border border-gray-100 inline-flex flex-col items-center justify-center mx-auto">
+      <img id="qrCodeImage" src="" alt="Store Payment QR Code" class="w-44 h-44 rounded-xl bg-white p-2 shadow-xs border border-gray-100">
+      <div class="flex items-center gap-2 mt-3">
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600">GCash</span>
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600">Maya</span>
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600">QRPh</span>
+      </div>
+    </div>
+
+    <p class="text-xs text-gray-400 px-4">Ask the customer to scan the QR code and verify payment before confirming.</p>
+
+    <div class="grid grid-cols-2 gap-2 pt-1">
+      <button type="button" onclick="closeQrModal()" class="py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl transition">Cancel</button>
+      <button type="button" onclick="confirmQrPayment()" class="py-3 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-xs rounded-2xl shadow-sm transition">Confirm Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIGITAL RECEIPT GENERATION MODAL -->
+<div id="receiptModal" onclick="if(event.target === this) closeReceiptModal()" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm max-h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+    
+    <button type="button" onclick="closeReceiptModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center text-xs transition print:hidden">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div id="printableReceipt" class="p-6 space-y-4 text-gray-800 overflow-y-auto flex-1">
+      <div class="text-center border-b border-dashed border-gray-300 pb-4">
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 mb-2 print:hidden">
+          <i class="fa-solid fa-check text-lg"></i>
+        </div>
+        <h3 class="text-xl font-black tracking-tight text-gray-900">TindaMind Store</h3>
+        <p class="text-[11px] text-gray-500">Official Transaction Receipt</p>
+        <div class="mt-2 text-[11px] font-mono text-gray-500 space-y-0.5">
+          <p id="recTxnId">TXN: #TM-000000</p>
+          <p id="recDateTime">Date: --</p>
+          <p>Cashier: {{ current_user_name }}</p>
+        </div>
+      </div>
+
+      <div class="space-y-2 border-b border-dashed border-gray-300 pb-4">
+        <div class="flex justify-between text-[10px] font-bold uppercase text-gray-400">
+          <span>Item</span>
+          <span>Amount</span>
+        </div>
+        <div id="recItemsList" class="space-y-1.5 text-xs"></div>
+      </div>
+
+      <div class="space-y-1.5 text-xs">
+        <div class="flex justify-between text-gray-500">
+          <span>Payment Method:</span>
+          <span id="recPayMethod" class="font-bold text-gray-800">QR Code</span>
+        </div>
+        <div class="flex justify-between text-base font-black text-gray-900 pt-1">
+          <span>TOTAL PAID</span>
+          <span id="recTotal" class="font-mono">₱0.00</span>
+        </div>
+        <div id="recCashDetails" class="hidden space-y-1 pt-1 text-gray-500 border-t border-gray-100">
+          <div class="flex justify-between">
+            <span>Cash Tendered:</span>
+            <span id="recCashTendered" class="font-mono">₱0.00</span>
+          </div>
+          <div class="flex justify-between font-bold text-emerald-600">
+            <span>Change:</span>
+            <span id="recCashChange" class="font-mono">₱0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center pt-3 border-t border-dashed border-gray-300">
+        <p class="text-[11px] font-semibold text-gray-600">Maraming Salamat sa Pagbili!</p>
+        <p class="text-[10px] text-gray-400">Powered by TindaMind POS</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-50 px-6 py-4 flex gap-3 border-t border-gray-100 shrink-0 print:hidden">
+      <button type="button" onclick="window.print()" class="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 font-bold text-xs rounded-2xl flex items-center justify-center gap-1.5 transition">
+        <i class="fa-solid fa-print"></i> Print Receipt
+      </button>
+      <button type="button" onclick="closeReceiptModal()" class="flex-1 py-2.5 bg-[#F2994A] hover:bg-[#e0893b] text-white font-bold text-xs rounded-2xl transition">
+        New Order
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
-// POS Cart & Filter Logic
 let cart = {};
 let paymentMethod = 'QR';
+let activeCategory = 'All';
+let currentCartTotal = 0;
 
-function filterCategory(cat) {
+function getLocalDateKey(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function injectCustomInventoryItemsToPos() {
+  const grid = document.getElementById('productsGrid');
+  if (!grid) return;
+  const customProducts = JSON.parse(localStorage.getItem('tindamind_custom_products') || '[]');
+  const existingNames = new Set(Array.from(document.querySelectorAll('.product-card')).map(c => c.dataset.name.trim()));
+
+  customProducts.forEach(p => {
+    const key = String(p.product_id);
+    if (!document.getElementById(`product-card-${key}`) && !existingNames.has(p.product_name.toLowerCase().trim())) {
+      const card = document.createElement('div');
+      card.id = `product-card-${key}`;
+      card.className = 'product-card bg-white rounded-3xl p-4 border border-emerald-200 shadow-sm flex flex-col justify-between hover:shadow-md transition';
+      card.dataset.cat = p.category_name;
+      card.dataset.name = p.product_name.toLowerCase();
+      card.dataset.stock = p.stock_quantity;
+      card.dataset.reorder = p.reorder_level;
+
+      const safeName = p.product_name.replace(/'/g, "\\'");
+      const badgeClass = p.stock_quantity <= 0 ? 'bg-gray-100 text-gray-400' : (p.stock_quantity <= p.reorder_level ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600');
+
+      card.innerHTML = `
+        <div>
+          <div class="flex justify-between items-start mb-2">
+            <span id="stock-badge-${key}" class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">
+              ${p.stock_quantity} left
+            </span>
+            <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">New</span>
+          </div>
+          <div class="w-full h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl font-bold text-gray-300 mb-2">
+            ${p.product_name.substring(0, 2).toUpperCase()}
+          </div>
+          <h4 class="font-bold text-gray-900 text-sm leading-tight line-clamp-2">${p.product_name}</h4>
+        </div>
+        <div class="pt-3 border-t border-gray-50 mt-3 flex items-center justify-between">
+          <span class="font-extrabold text-gray-900 text-base">₱${Number(p.selling_price).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+          <button id="add-btn-${key}" 
+                  onclick="addToCart('${key}', '${safeName}', ${p.selling_price}, '${p.category_name}')" 
+                  ${p.stock_quantity <= 0 ? 'disabled' : ''}
+                  class="w-8 h-8 bg-[#9df079] hover:bg-[#8ee469] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 rounded-xl flex items-center justify-center font-bold shadow-sm transition">
+            +
+          </button>
+        </div>
+      `;
+      grid.prepend(card);
+    }
+  });
+}
+
+function syncPosCardsWithLiveStock() {
+  injectCustomInventoryItemsToPos();
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+  const overridesMap = JSON.parse(localStorage.getItem('tindamind_product_overrides') || '{}');
+  const deletedIds = new Set(JSON.parse(localStorage.getItem('tindamind_deleted_ids') || '[]').map(String));
+
+  document.querySelectorAll('.product-card').forEach(card => {
+    const id = String(card.id.replace('product-card-', ''));
+
+    if (deletedIds.has(id)) {
+      card.remove();
+      return;
+    }
+
+    if (overridesMap[id]) {
+      const ov = overridesMap[id];
+      card.dataset.name = ov.name.toLowerCase();
+      card.dataset.reorder = ov.reorder;
+      const titleEl = card.querySelector('h4');
+      const priceEl = card.querySelector('.pt-3 span');
+      const addBtn = document.getElementById(`add-btn-${id}`);
+      if (titleEl) titleEl.innerText = ov.name;
+      if (priceEl) priceEl.innerText = '₱' + Number(ov.price).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (addBtn) {
+        const safeName = ov.name.replace(/'/g, "\\'");
+        addBtn.setAttribute('onclick', `addToCart('${id}', '${safeName}', ${ov.price}, '${card.dataset.cat}')`);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(liveStockMap, id)) {
+      const updatedStock = Math.max(0, parseInt(liveStockMap[id], 10));
+      const reorderLevel = parseInt(card.dataset.reorder, 10);
+      const badge = document.getElementById(`stock-badge-${id}`);
+      const addBtn = document.getElementById(`add-btn-${id}`);
+
+      card.dataset.stock = updatedStock;
+      if (badge) badge.innerText = `${updatedStock} left`;
+
+      if (updatedStock <= 0) {
+        if (badge) badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400';
+        if (addBtn) addBtn.disabled = true;
+      } else if (updatedStock <= reorderLevel) {
+        if (badge) badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600';
+        if (addBtn) addBtn.disabled = false;
+      } else {
+        if (badge) badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600';
+        if (addBtn) addBtn.disabled = false;
+      }
+    }
+  });
+  filterProducts();
+}
+
+function filterCategory(cat, btnElement) {
+  activeCategory = cat;
   document.querySelectorAll('.cat-pill').forEach(btn => {
     btn.classList.remove('bg-[#c5f87b]', 'font-semibold');
-    btn.classList.add('bg-white', 'text-gray-700');
+    btn.classList.add('bg-white', 'text-gray-700', 'font-medium');
   });
-  event.target.classList.add('bg-[#c5f87b]', 'font-semibold');
+  btnElement.classList.remove('bg-white', 'text-gray-700', 'font-medium');
+  btnElement.classList.add('bg-[#c5f87b]', 'font-semibold');
+  filterProducts();
+}
+
+function filterProducts() {
+  const searchVal = document.getElementById('posSearchInput').value.toLowerCase().trim();
   document.querySelectorAll('.product-card').forEach(card => {
-    card.classList.toggle('hidden', cat !== 'All' && card.dataset.cat !== cat);
+    const matchesCat = activeCategory === 'All' || card.dataset.cat === activeCategory;
+    const matchesSearch = card.dataset.name.includes(searchVal);
+    card.classList.toggle('hidden', !(matchesCat && matchesSearch));
   });
 }
 
-function addToCart(id, name, price, maxStock) {
-  if (!cart[id]) cart[id] = { id, name, price, qty: 1, maxStock };
-  else if (cart[id].qty < maxStock) cart[id].qty += 1;
-  renderCart();
-}
+function addToCart(id, name, price, category) {
+  const key = String(id);
+  const card = document.getElementById(`product-card-${key}`);
+  const availableStock = parseInt(card.dataset.stock, 10);
 
-function updateCartQty(id, delta) {
-  if (cart[id]) {
-    cart[id].qty += delta;
-    if (cart[id].qty <= 0) delete cart[id];
+  if (availableStock <= 0) return;
+
+  if (!cart[key]) {
+    cart[key] = { id: key, name, price: parseFloat(price), category, qty: 1 };
+  } else if (cart[key].qty < availableStock) {
+    cart[key].qty += 1;
+  } else {
+    alert(`Maximum available stock (${availableStock}) reached for ${name}.`);
+    return;
   }
   renderCart();
 }
 
-function removeCartItem(id) { delete cart[id]; renderCart(); }
-function clearCart() { cart = {}; renderCart(); }
+function updateCartQty(id, delta) {
+  const key = String(id);
+  const card = document.getElementById(`product-card-${key}`);
+  const availableStock = parseInt(card.dataset.stock, 10);
+
+  if (cart[key]) {
+    const newQty = cart[key].qty + delta;
+    if (newQty > availableStock) {
+      alert(`Only ${availableStock} left in stock.`);
+      return;
+    }
+    cart[key].qty = newQty;
+    if (cart[key].qty <= 0) delete cart[key];
+  }
+  renderCart();
+}
+
+function removeCartItem(id) { delete cart[String(id)]; renderCart(); }
+
+function clearCart() {
+  cart = {};
+  document.getElementById('cashReceivedInput').value = '';
+  document.getElementById('changeDisplay').innerText = '₱0.00';
+  renderCart();
+}
 
 function setPaymentMethod(method) {
   paymentMethod = method;
-  document.getElementById('btnQR').className = method === 'QR' ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
-  document.getElementById('btnCash').className = method === 'Cash' ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1" : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1";
+  document.getElementById('btnQR').className = method === 'QR' 
+    ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1 transition" 
+    : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1 transition";
+  
+  document.getElementById('btnCash').className = method === 'Cash' 
+    ? "p-3 rounded-2xl border-2 border-gray-900 bg-[#EDEDED] text-gray-900 font-bold flex flex-col items-center justify-center text-xs gap-1 transition" 
+    : "p-3 rounded-2xl border border-gray-200 text-gray-600 font-bold flex flex-col items-center justify-center text-xs gap-1 transition";
+
+  const cashSection = document.getElementById('cashInputSection');
+  if (method === 'Cash') {
+    cashSection.classList.remove('hidden');
+    calculateChange();
+  } else {
+    cashSection.classList.add('hidden');
+  }
+}
+
+function calculateChange() {
+  const cashInput = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
+  const change = cashInput - currentCartTotal;
+  const display = document.getElementById('changeDisplay');
+  
+  if (cashInput === 0) {
+    display.innerText = '₱0.00';
+    display.className = 'font-mono font-extrabold text-gray-400 text-sm';
+  } else if (change < 0) {
+    display.innerText = 'Insufficient';
+    display.className = 'font-mono font-bold text-rose-500 text-xs';
+  } else {
+    display.innerText = '₱' + change.toFixed(2);
+    display.className = 'font-mono font-extrabold text-emerald-600 text-sm';
+  }
 }
 
 function renderCart() {
@@ -125,6 +446,7 @@ function renderCart() {
     document.getElementById('totalVal').innerText = '₱0.00';
     document.getElementById('payBtnAmount').innerText = '₱0.00';
     document.getElementById('btnPay').disabled = true;
+    currentCartTotal = 0;
     return;
   }
 
@@ -138,25 +460,149 @@ function renderCart() {
           <div class="text-xs text-gray-400">₱${item.price.toFixed(2)} x ${item.qty}</div>
         </div>
         <div class="flex items-center gap-1.5">
-          <button onclick="updateCartQty(${item.id}, -1)" class="w-6 h-6 bg-white border rounded text-xs">-</button>
+          <button onclick="updateCartQty('${item.id}', -1)" class="w-6 h-6 bg-white border rounded text-xs font-bold hover:bg-gray-100">-</button>
           <span class="text-xs font-bold font-mono px-1">${item.qty}</span>
-          <button onclick="updateCartQty(${item.id}, 1)" class="w-6 h-6 bg-white border rounded text-xs">+</button>
-          <button onclick="removeCartItem(${item.id})" class="text-rose-500 pl-1"><i class="fa-solid fa-trash text-xs"></i></button>
+          <button onclick="updateCartQty('${item.id}', 1)" class="w-6 h-6 bg-white border rounded text-xs font-bold hover:bg-gray-100">+</button>
+          <button onclick="removeCartItem('${item.id}')" class="text-rose-500 hover:text-rose-600 pl-1"><i class="fa-solid fa-trash text-xs"></i></button>
         </div>
       </div>
     `;
   }).join('');
 
+  container.scrollTop = container.scrollHeight;
+  currentCartTotal = total;
   const formatted = '₱' + total.toFixed(2);
   document.getElementById('subtotalVal').innerText = formatted;
   document.getElementById('totalVal').innerText = formatted;
   document.getElementById('payBtnAmount').innerText = formatted;
   document.getElementById('btnPay').disabled = false;
+
+  if (paymentMethod === 'Cash') calculateChange();
 }
 
 function executeCheckout() {
-  alert('Sale completed via ' + paymentMethod + '!');
+  const items = Object.values(cart);
+  if (items.length === 0) return;
+
+  if (paymentMethod === 'QR') {
+    document.getElementById('qrAmountDisplay').innerText = '₱' + currentCartTotal.toFixed(2);
+    const qrPayload = encodeURIComponent(`TindaMind-Store-Payment-PHP-${currentCartTotal.toFixed(2)}`);
+    document.getElementById('qrCodeImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrPayload}`;
+    document.getElementById('qrPaymentModal').classList.remove('hidden');
+    return;
+  }
+
+  const cashTendered = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
+  if (cashTendered < currentCartTotal) {
+    alert('Insufficient cash amount entered.');
+    document.getElementById('cashReceivedInput').focus();
+    return;
+  }
+
+  finalizeSale(cashTendered);
+}
+
+function closeQrModal() { document.getElementById('qrPaymentModal').classList.add('hidden'); }
+function confirmQrPayment() { closeQrModal(); finalizeSale(0); }
+
+function syncSaleToAnalytics(txnNumber, items, totalAmount, payMethod, timestampStr) {
+  const existingSales = JSON.parse(localStorage.getItem('tindamind_live_sales') || '[]');
+  const now = new Date();
+  const currentHourLabel = now.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+  const dateKey = getLocalDateKey(now);
+
+  existingSales.unshift({
+    txnId: `#${txnNumber}`,
+    dateKey: dateKey,
+    timestamp: timestampStr,
+    hourLabel: currentHourLabel,
+    cashier: "{{ current_user_name }}",
+    paymentMethod: payMethod,
+    total: totalAmount,
+    items: items.map(i => ({
+      id: String(i.id),
+      name: i.name,
+      category: i.category,
+      qty: i.qty,
+      revenue: i.price * i.qty
+    }))
+  });
+
+  localStorage.setItem('tindamind_live_sales', JSON.stringify(existingSales));
+}
+
+function finalizeSale(cashTendered) {
+  const items = Object.values(cart);
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+
+  items.forEach(item => {
+    const key = String(item.id);
+    const card = document.getElementById(`product-card-${key}`);
+    const badge = document.getElementById(`stock-badge-${key}`);
+    const addBtn = document.getElementById(`add-btn-${key}`);
+
+    let currentStock = parseInt(card.dataset.stock, 10);
+    const reorderLevel = parseInt(card.dataset.reorder, 10);
+    const updatedStock = Math.max(0, currentStock - item.qty);
+
+    card.dataset.stock = updatedStock;
+    liveStockMap[key] = updatedStock;
+    if (badge) badge.innerText = `${updatedStock} left`;
+
+    if (updatedStock <= 0) {
+      if (badge) badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400';
+      if (addBtn) addBtn.disabled = true;
+    } else if (updatedStock <= reorderLevel) {
+      if (badge) badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600';
+    }
+  });
+
+  localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+
+  const txnNumber = 'TM-' + Math.floor(100000 + Math.random() * 900000);
+  const nowStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  const payLabel = paymentMethod === 'QR' ? 'QR Code' : 'Cash';
+
+  syncSaleToAnalytics(txnNumber, items, currentCartTotal, payLabel, nowStr);
+
+  if (window.TindaMindSync) {
+    window.TindaMindSync.emit('pos_checkout', { txnNumber, total: currentCartTotal });
+  }
+
+  document.getElementById('recTxnId').innerText = `TXN: #${txnNumber}`;
+  document.getElementById('recDateTime').innerText = `Date: ${nowStr}`;
+  document.getElementById('recPayMethod').innerText = paymentMethod === 'QR' ? 'QR Code (GCash/Maya)' : 'Cash';
+  document.getElementById('recTotal').innerText = '₱' + currentCartTotal.toFixed(2);
+
+  document.getElementById('recItemsList').innerHTML = items.map(i => `
+    <div class="flex justify-between items-start">
+      <div>
+        <span class="font-semibold text-gray-800">${i.name}</span>
+        <span class="text-gray-400 text-[11px] block">${i.qty} x ₱${i.price.toFixed(2)}</span>
+      </div>
+      <span class="font-mono font-semibold text-gray-900">₱${(i.price * i.qty).toFixed(2)}</span>
+    </div>
+  `).join('');
+
+  const cashDetailsEl = document.getElementById('recCashDetails');
+  if (paymentMethod === 'Cash') {
+    cashDetailsEl.classList.remove('hidden');
+    document.getElementById('recCashTendered').innerText = '₱' + cashTendered.toFixed(2);
+    document.getElementById('recCashChange').innerText = '₱' + (cashTendered - currentCartTotal).toFixed(2);
+  } else {
+    cashDetailsEl.classList.add('hidden');
+  }
+
+  document.getElementById('receiptModal').classList.remove('hidden');
   clearCart();
+}
+
+function closeReceiptModal() { document.getElementById('receiptModal').classList.add('hidden'); }
+
+document.addEventListener('DOMContentLoaded', syncPosCardsWithLiveStock);
+if (document.readyState !== 'loading') syncPosCardsWithLiveStock();
+if (window.TindaMindSync) {
+  window.TindaMindSync.subscribe(() => syncPosCardsWithLiveStock());
 }
 </script>
 {% endblock %}
