@@ -1,0 +1,38 @@
+<header class="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+    <!-- Left Section: Mobile Menu Button & Context Title -->
+    <div class="flex items-center space-x-3">
+        <!-- Mobile Sidebar Hamburger Toggle -->
+        <button id="mobile-sidebar-toggle" type="button" class="inline-flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 lg:hidden" aria-label="Open sidebar navigation">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <div class="flex flex-col">
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-brand-600">APPDEV Group 10</span>
+                <span class="text-slate-300">/</span>
+                <span class="text-xs font-medium text-slate-500">Phase 1 Foundation</span>
+            </div>
+            <h1 class="text-base font-bold text-slate-900 sm:text-lg">TindaMind Terminal</h1>
+        </div>
+    </div>
+
+    <!-- Right Section: Store Operational Clock & Status Badge -->
+    <div class="flex items-center space-x-3 sm:space-x-4">
+        <!-- Operational Indicator -->
+        <div class="hidden sm:flex items-center space-x-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>System Active</span>
+        </div>
+
+        <!-- Role Badge -->
+        <div class="flex items-center space-x-2 border-l border-slate-200 pl-3 sm:pl-4">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-brand-700 font-bold text-xs">
+                JH
+            </div>
+            <div class="hidden md:flex flex-col text-left">
+                <span class="text-xs font-semibold text-slate-800 leading-tight">James Huelar</span>
+                <span class="text-[10px] font-medium text-slate-500 uppercase tracking-tight">Project Lead</span>
+            </div>
+        </div>
+    </div>
+</header>

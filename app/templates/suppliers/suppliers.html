@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block header_title %}
+<div>
+  <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Suppliers & Restock Management</h1>
+  <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- 1. Partner Supplier Directory -->
+  <div class="space-y-4">
+    <div class="flex justify-between items-center">
+      <h2 class="text-lg font-bold text-gray-900">Partner Supplier Directory</h2>
+      <button onclick="openModal('addSupplierModal')" class="px-4 py-2 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition">
+        + Add New Supplier
+      </button>
+    </div>
+
+    <div id="supplierDirectoryGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for s in suppliers %}
+      <div class="bg-white rounded-3xl p-5 border border-gray-100/80 shadow-sm space-y-3 flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-bold text-lg">
+              <i class="fa-solid fa-building text-sm"></i>
+            </div>
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">Active Partner</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-900 text-base leading-snug line-clamp-1">{{ s.supplier_name }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Lead time: {{ s.lead_time_days }} days</p>
+          </div>
+          <div class="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-400">
+            {% if s.contact_person %}
+            <p class="flex items-center gap-2"><i class="fa-solid fa-user text-[10px]"></i> {{ s.contact_person }}</p>
+            {% endif %}
+            <p class="flex items-center gap-2"><i class="fa-solid fa-phone text-[10px]"></i> {{ s.phone or 'N/A' }}</p>
+            <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-envelope text-[10px]"></i> {{ s.email or 'N/A' }}</p>
+            <p class="flex items-center gap-2 truncate"><i class="fa-solid fa-location-dot text-[10px]"></i> {{ s.address or 'Metro Manila' }}</p>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-gray-50 flex justify-end">
+          <form method="POST" action="{{ url_for('suppliers.delete_supplier', supplier_id=s.supplier_id) }}" onsubmit="return confirm('Delete supplier {{ s.supplier_name }}?');">
+            <button type="submit" class="text-[11px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-span-full text-center py-8 text-gray-400 bg-white rounded-3xl border border-gray-100">No partner suppliers added yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 2. Stockout-Risk & Low Stock Restock Recommendations -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <span class="text-amber-500">⚠️</span> Stockout-Risk Restock Recommendations
+        </h2>
+        <p class="text-xs text-gray-400 mt-0.5">Live reorder suggestions synced with POS sales & minimum thresholds</p>
+      </div>
+      <button onclick="createBulkOrder()" class="px-4 py-2 bg-[#F4A838] hover:bg-[#e0972b] text-white font-bold text-xs rounded-2xl shadow-sm transition self-start sm:self-auto active:scale-95">
+        ⚡ Create Bulk Restock PO
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3.5 pr-4">Item Name</th>
+            <th class="py-3.5 px-4 text-center">Current Stock</th>
+            <th class="py-3.5 px-4 text-center">Stockout Risk</th>
+            <th class="py-3.5 px-4 text-center">Suggested Reorder</th>
+            <th class="py-3.5 px-4">Preferred Supplier</th>
+            <th class="py-3.5 px-4">Est. Total Cost</th>
+            <th class="py-3.5 pl-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="restockTableBody" class="divide-y divide-gray-100">
+          {% for item in restock_items %}
+          {% set suggested_qty = ((item.reorder_level * 3) - item.stock_quantity) if ((item.reorder_level * 3) - item.stock_quantity) > 10 else 10 %}
+          {% set est_cost = (item.cost_price|float) * suggested_qty %}
+          <tr id="restock-row-{{ item.product_id }}" 
+              class="restock-rec-row hover:bg-gray-50/70 transition"
+              data-id="{{ item.product_id }}"
+              data-supplier-id="{{ item.supplier_id }}"
+              data-name="{{ item.product_name }}"
+              data-base-stock="{{ item.stock_quantity }}"
+              data-reorder="{{ item.reorder_level }}"
+              data-cost="{{ item.cost_price }}"
+              data-supplier="{{ item.supplier.supplier_name }}">
+            <td class="py-4 pr-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-lg shrink-0">
+                  {% if 'Soup' in item.product_name %}🥫{% elif 'Noodle' in item.product_name %}🍜{% elif 'Chip' in item.product_name %}🍟{% elif 'Juice' in item.product_name %}🧃{% else %}📦{% endif %}
+                </div>
+                <span class="font-bold text-gray-900 text-sm">{{ item.product_name }}</span>
+              </div>
+            </td>
+            <td id="restock-stock-{{ item.product_id }}" class="py-4 px-4 text-center font-bold text-rose-500">{{ item.stock_quantity }} units</td>
+            <td id="restock-risk-{{ item.product_id }}" class="py-4 px-4 text-center">
+              {% if item.stock_quantity <= (item.reorder_level * 0.75) %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600">High Risk</span>
+              {% else %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">Moderate Risk</span>
+              {% endif %}
+            </td>
+            <td id="restock-qty-{{ item.product_id }}" class="py-4 px-4 text-center font-bold text-emerald-500">+{{ suggested_qty }} units</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-600">{{ item.supplier.supplier_name }}</td>
+            <td id="restock-cost-{{ item.product_id }}" class="py-4 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(est_cost) }}</td>
+            <td class="py-4 pl-4 text-right">
+              <button id="restock-btn-{{ item.product_id }}"
+                      onclick="openPoPreviewModal('{{ item.product_name|replace("'", "\\'") }}', '{{ item.supplier.supplier_name|replace("'", "\\'") }}', {{ suggested_qty }}, {{ item.cost_price }}, {{ est_cost }}, {{ item.product_id }}, {{ item.supplier_id }})" 
+                      class="px-4 py-1.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold text-xs rounded-xl shadow-sm transition active:scale-95">
+                Generate PO
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr id="emptyRestockRow">
+            <td colspan="7" class="text-center py-8 text-gray-400 text-sm">All inventory levels are currently healthy! 🎉</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. Recent Purchase Orders -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+      <h2 class="text-lg font-bold text-gray-900">Recent Purchase Orders</h2>
+      <span class="text-xs font-semibold text-gray-400">Mark received to auto-update Inventory & POS</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3 pr-4">PO #</th>
+            <th class="py-3 px-4">Supplier</th>
+            <th class="py-3 px-4">Items Summary</th>
+            <th class="py-3 px-4">Date Ordered</th>
+            <th class="py-3 px-4">Total Amount</th>
+            <th class="py-3 px-4">Status</th>
+            <th class="py-3 pl-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="purchaseOrdersBody" class="divide-y divide-gray-100">
+          {% for po in recent_pos %}
+          <tr id="db-po-row-{{ po.purchase_order_id }}" class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4 font-mono font-bold text-gray-900">{{ po.po_number }}</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-700">{{ po.supplier.supplier_name if po.supplier else 'Supplier' }}</td>
+            <td class="py-4 px-4 text-xs text-gray-500">
+              {% if po.items %}
+                {% for pi in po.items %}{{ pi.product.product_name if pi.product else 'Item' }} (x{{ pi.quantity }}){% if not loop.last %}, {% endif %}{% endfor %}
+              {% else %}
+                Restock Order
+              {% endif %}
+            </td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">{{ po.order_date.strftime('%Y-%m-%d') if po.order_date else '' }}</td>
+            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱{{ "{:,.2f}".format(po.total_cost) }}</td>
+            <td class="py-4 px-4 status-cell">
+              {% if po.status == 'Received' %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>
+              {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
+              {% endif %}
+            </td>
+            <td class="py-4 pl-4 text-right action-cell">
+              {% if po.status != 'Received' %}
+                <button onclick="markDbPoReceived({{ po.purchase_order_id }}, 'db-po-row-{{ po.purchase_order_id }}')" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
+              {% else %}
+                <span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr id="po-row-1" class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4 font-mono font-bold text-gray-900">PO-2026-0041</td>
+            <td class="py-4 px-4 text-xs font-semibold text-gray-700">Monde Nissin</td>
+            <td class="py-4 px-4 text-xs text-gray-500">Instant Noodles (x50)</td>
+            <td class="py-4 px-4 text-xs text-gray-400 font-mono">2026-11-10</td>
+            <td class="py-4 px-4 font-mono font-bold text-gray-900">₱575.00</td>
+            <td class="py-4 px-4 status-cell">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>
+            </td>
+            <td class="py-4 pl-4 text-right action-cell">
+              <button onclick="markReceived('po-row-1', [{ productId: 2, name: 'Instant Noodles', qty: 50 }])" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal 1: Add New Supplier -->
+<div id="addSupplierModal" onclick="if(event.target === this) closeModal('addSupplierModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Add New Partner Supplier</h3>
+      <button onclick="closeModal('addSupplierModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers.add_supplier') }}" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Company / Supplier Name</label>
+        <input type="text" id="sup_name" name="supplier_name" required placeholder="e.g. San Miguel Corp…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Contact Person</label>
+          <input type="text" name="contact_person" placeholder="e.g. Maria Santos…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Lead Time (Days)</label>
+          <input type="number" id="sup_lead" name="lead_time_days" required value="3" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Phone Number</label>
+          <input type="text" id="sup_phone" name="phone" required placeholder="0917-000-0000…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Email Address</label>
+          <input type="email" id="sup_email" name="email" required placeholder="contact@supplier.com…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Office Address</label>
+        <input type="text" id="sup_address" name="address" required placeholder="City Address…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('addSupplierModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl hover:bg-[#b2f357]">Save Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Purchase Order (PO) Document Preview & Generation -->
+<div id="poPreviewModal" onclick="if(event.target === this) closeModal('poPreviewModal')" class="hidden fixed inset-0 z-50 bg-gray-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="p-6 space-y-5">
+      <!-- PO Header -->
+      <div class="flex justify-between items-start border-b border-dashed border-gray-200 pb-4">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Purchase Order Slip</span>
+          <h3 id="poModalNumber" class="text-xl font-black font-mono text-gray-900 mt-2">PO-2026-0042</h3>
+          <p id="poModalDate" class="text-xs text-gray-400">Issued: --</p>
+        </div>
+        <button onclick="closeModal('poPreviewModal')" class="text-gray-400 hover:text-gray-600 print:hidden">✕</button>
+      </div>
+
+      <!-- Supplier & Store Info -->
+      <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-2xl border border-gray-100 text-xs">
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase">Vendor / Supplier</p>
+          <p id="poModalSupplier" class="font-bold text-gray-900 mt-0.5">--</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase">Deliver To</p>
+          <p class="font-bold text-gray-900 mt-0.5">{{ store_settings.store_name if store_settings else 'TindaMind Store' }}</p>
+        </div>
+      </div>
+
+      <!-- Editable Restock Quantity & Cost Breakdown -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-gray-700" id="poModalItemName">--</span>
+          <span class="text-gray-400 font-mono">Unit Cost: ₱<span id="poModalUnitCost">0.00</span></span>
+        </div>
+
+        <div class="flex items-center justify-between bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200/70">
+          <label for="poModalQtyInput" class="text-xs font-bold text-gray-600">Order Quantity (Units):</label>
+          <input type="number" id="poModalQtyInput" min="1" oninput="recalculatePoTotal()" 
+                 class="w-24 text-right font-mono font-bold text-sm bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-gray-900">
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
+          <span class="text-xs font-bold text-gray-500 uppercase">Estimated PO Total</span>
+          <span id="poModalTotalCost" class="text-xl font-black font-mono text-gray-900">₱0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="bg-gray-50 px-6 py-4 flex gap-2 border-t border-gray-100 print:hidden">
+      <button type="button" onclick="window.print()" class="px-3.5 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-print"></i> Print
+      </button>
+      <button type="button" onclick="confirmGeneratePo()" class="flex-1 py-2.5 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-xs rounded-xl shadow-sm transition">
+        Confirm & Send PO
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let poCounter = parseInt(localStorage.getItem('tindamind_po_counter') || '42');
+let activePoContext = {};
+
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// Sync Restock Recommendations Table with Live POS Stock
+function syncRestockRecommendationsWithLiveStock() {
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+
+  document.querySelectorAll('.restock-rec-row').forEach(row => {
+    const id = row.dataset.id;
+    const supId = row.dataset.supplierId;
+    const baseStock = parseInt(row.dataset.baseStock);
+    const reorderLevel = parseInt(row.dataset.reorder);
+    const unitCost = parseFloat(row.dataset.cost);
+    const itemName = row.dataset.name;
+    const supplier = row.dataset.supplier;
+
+    const currentStock = liveStockMap[id] !== undefined ? parseInt(liveStockMap[id]) : baseStock;
+    const suggestedQty = Math.max(10, (reorderLevel * 3) - currentStock);
+    const estCost = unitCost * suggestedQty;
+
+    const stockEl = document.getElementById(`restock-stock-${id}`);
+    const riskEl = document.getElementById(`restock-risk-${id}`);
+    const qtyEl = document.getElementById(`restock-qty-${id}`);
+    const costEl = document.getElementById(`restock-cost-${id}`);
+    const btnEl = document.getElementById(`restock-btn-${id}`);
+
+    if (stockEl) stockEl.innerText = `${currentStock} units`;
+    if (qtyEl) qtyEl.innerText = `+${suggestedQty} units`;
+    if (costEl) costEl.innerText = '₱' + estCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (riskEl) {
+      if (currentStock === 0) {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">Out of Stock</span>';
+      } else if (currentStock <= (reorderLevel * 0.75)) {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600">High Risk</span>';
+      } else {
+        riskEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">Moderate Risk</span>';
+      }
+    }
+
+    if (btnEl) {
+      btnEl.onclick = () => openPoPreviewModal(itemName, supplier, suggestedQty, unitCost, estCost, id, supId);
+    }
+  });
+}
+
+// Open PO Document Preview Modal
+function openPoPreviewModal(itemName, supplier, suggestedQty, unitCost, totalCost, productId, supplierId) {
+  const today = new Date().toISOString().split('T')[0];
+  const poNumber = 'PO-2026-00' + poCounter;
+
+  activePoContext = { itemName, supplier, unitCost, productId, supplierId, poNumber };
+
+  document.getElementById('poModalNumber').innerText = poNumber;
+  document.getElementById('poModalDate').innerText = `Issued: ${today}`;
+  document.getElementById('poModalSupplier').innerText = supplier;
+  document.getElementById('poModalItemName').innerText = itemName;
+  document.getElementById('poModalUnitCost').innerText = parseFloat(unitCost).toFixed(2);
+  document.getElementById('poModalQtyInput').value = suggestedQty;
+  document.getElementById('poModalTotalCost').innerText = '₱' + parseFloat(totalCost).toFixed(2);
+
+  openModal('poPreviewModal');
+}
+
+function recalculatePoTotal() {
+  const qty = parseInt(document.getElementById('poModalQtyInput').value) || 0;
+  const total = qty * parseFloat(activePoContext.unitCost || 0);
+  document.getElementById('poModalTotalCost').innerText = '₱' + total.toFixed(2);
+}
+
+function confirmGeneratePo() {
+  const qty = parseInt(document.getElementById('poModalQtyInput').value) || 1;
+  const totalAmount = qty * parseFloat(activePoContext.unitCost);
+
+  fetch('/suppliers/po/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      supplier_id: activePoContext.supplierId,
+      product_id: activePoContext.productId,
+      quantity: qty,
+      po_number: activePoContext.poNumber
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    saveAndRenderPurchaseOrder(
+      activePoContext.supplier,
+      `${activePoContext.itemName} (x${qty})`,
+      totalAmount,
+      [{ productId: activePoContext.productId, name: activePoContext.itemName, qty: qty }],
+      data && data.po_id ? data.po_id : null,
+      data && data.po_number ? data.po_number : null
+    );
+  })
+  .catch(() => {
+    saveAndRenderPurchaseOrder(
+      activePoContext.supplier,
+      `${activePoContext.itemName} (x${qty})`,
+      totalAmount,
+      [{ productId: activePoContext.productId, name: activePoContext.itemName, qty: qty }]
+    );
+  });
+
+  const row = document.getElementById(`restock-row-${activePoContext.productId}`);
+  if (row) row.remove();
+
+  closeModal('poPreviewModal');
+  if (typeof showToast === 'function') showToast(`Purchase Order sent to ${activePoContext.supplier}!`, 'success');
+}
+
+// Save & Append Purchase Order (Persists in localStorage & DB)
+function saveAndRenderPurchaseOrder(supplier, summary, amount, itemsPayload, dbPoId = null, customPoNum = null) {
+  const today = new Date().toISOString().split('T')[0];
+  const rowId = 'po-row-' + poCounter;
+  const poNumber = customPoNum || ('PO-2026-00' + poCounter++);
+  localStorage.setItem('tindamind_po_counter', String(poCounter));
+
+  const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+  savedPos.unshift({
+    rowId,
+    dbPoId,
+    poNumber,
+    supplier,
+    summary,
+    dateOrdered: today,
+    amount: parseFloat(amount),
+    status: 'Pending Delivery',
+    items: itemsPayload
+  });
+  localStorage.setItem('tindamind_saved_pos', JSON.stringify(savedPos));
+  renderSavedPurchaseOrders();
+}
+
+function renderSavedPurchaseOrders() {
+  const tbody = document.getElementById('purchaseOrdersBody');
+  document.querySelectorAll('.dynamic-po-row').forEach(el => el.remove());
+
+  const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+  savedPos.slice().reverse().forEach(po => {
+    if (po.dbPoId && document.getElementById(`db-po-row-${po.dbPoId}`)) return;
+    const isReceived = po.status === 'Received';
+    const itemsJsonAttr = JSON.stringify(po.items || []).replace(/"/g, '&quot;');
+    const rowHTML = `
+      <tr id="${po.rowId}" class="dynamic-po-row hover:bg-gray-50/70 transition">
+        <td class="py-4 pr-4 font-mono font-bold text-gray-900">${po.poNumber}</td>
+        <td class="py-4 px-4 text-xs font-semibold text-gray-700">${po.supplier}</td>
+        <td class="py-4 px-4 text-xs text-gray-500">${po.summary}</td>
+        <td class="py-4 px-4 text-xs text-gray-400 font-mono">${po.dateOrdered}</td>
+        <td class="py-4 px-4 font-mono font-bold text-gray-900">₱${Number(po.amount).toFixed(2)}</td>
+        <td class="py-4 px-4 status-cell">
+          ${isReceived
+            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>'
+            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Pending Delivery</span>'}
+        </td>
+        <td class="py-4 pl-4 text-right action-cell">
+          ${isReceived
+            ? '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>'
+            : `<button onclick="markReceived('${po.rowId}', ${itemsJsonAttr}, ${po.dbPoId || 'null'})" class="text-xs font-bold text-[#5CB85C] hover:underline">Mark Received</button>`}
+        </td>
+      </tr>
+    `;
+    tbody.insertAdjacentHTML('afterbegin', rowHTML);
+  });
+}
+
+function createBulkOrder() {
+  const rows = document.querySelectorAll('#restockTableBody tr[id^="restock-row-"]');
+  if (rows.length === 0) return;
+
+  rows.forEach(row => {
+    const id = row.dataset.id;
+    const supId = row.dataset.supplierId;
+    const itemName = row.dataset.name;
+    const supplier = row.dataset.supplier;
+    const qtyText = document.getElementById(`restock-qty-${id}`).innerText.replace('+', '').replace('units', '').trim();
+    const qty = parseInt(qtyText) || 10;
+    const costText = document.getElementById(`restock-cost-${id}`).innerText.replace('₱', '').replace(/,/g, '').trim();
+
+    fetch('/suppliers/po/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supplier_id: supId, product_id: id, quantity: qty })
+    }).catch(() => {});
+
+    saveAndRenderPurchaseOrder(
+      supplier,
+      `${itemName} (x${qty})`,
+      costText,
+      [{ productId: id, name: itemName, qty: qty }]
+    );
+    row.remove();
+  });
+
+  if (typeof showToast === 'function') showToast('Bulk Restock Purchase Orders generated!', 'success');
+}
+
+function markDbPoReceived(poId, rowId) {
+  fetch(`/suppliers/po/update_status/${poId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'Received' })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const row = document.getElementById(rowId);
+    if (row) {
+      row.querySelector('.status-cell').innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>';
+      row.querySelector('.action-cell').innerHTML = '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>';
+    }
+    if (data && data.updated_stocks) {
+      const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+      Object.entries(data.updated_stocks).forEach(([pid, stk]) => {
+        liveStockMap[String(pid)] = stk;
+      });
+      localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+      if (window.TindaMindSync) window.TindaMindSync.emit('stock_restocked', data.updated_stocks);
+    }
+    syncRestockRecommendationsWithLiveStock();
+    if (typeof showToast === 'function') showToast('Delivery received! Inventory & POS stock replenished.', 'success');
+  });
+}
+
+function markReceived(rowId, itemsPayload = [], dbPoId = null) {
+  if (dbPoId) {
+    markDbPoReceived(dbPoId, rowId);
+    return;
+  }
+  const row = document.getElementById(rowId);
+  if (row) {
+    const statusCell = row.querySelector('.status-cell');
+    const actionCell = row.querySelector('.action-cell');
+
+    statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">Received</span>';
+    actionCell.innerHTML = '<span class="text-xs font-bold text-gray-400 flex items-center justify-end gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Done</span>';
+  }
+
+  const savedPos = JSON.parse(localStorage.getItem('tindamind_saved_pos') || '[]');
+  const targetPo = savedPos.find(p => p.rowId === rowId);
+  if (targetPo) {
+    targetPo.status = 'Received';
+    localStorage.setItem('tindamind_saved_pos', JSON.stringify(savedPos));
+  }
+
+  if (itemsPayload && itemsPayload.length > 0) {
+    const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+    itemsPayload.forEach(item => {
+      const restockRow = document.getElementById(`restock-row-${item.productId}`);
+      const baseStock = restockRow ? parseInt(restockRow.dataset.baseStock) : 9;
+      const currentStock = liveStockMap[item.productId] !== undefined ? parseInt(liveStockMap[item.productId]) : baseStock;
+      liveStockMap[item.productId] = currentStock + parseInt(item.qty);
+      fetch(`/inventory/product/restock/${item.productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ add_units: parseInt(item.qty) })
+      }).catch(() => {});
+    });
+    localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+    if (window.TindaMindSync) window.TindaMindSync.emit('stock_restocked');
+  }
+
+  syncRestockRecommendationsWithLiveStock();
+  if (typeof showToast === 'function') showToast('Delivery received! Inventory & POS stock replenished.', 'success');
+}
+
+syncRestockRecommendationsWithLiveStock();
+renderSavedPurchaseOrders();
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'tindamind_live_stock') {
+    syncRestockRecommendationsWithLiveStock();
+  }
+});
+
+if (window.TindaMindSync) {
+  window.TindaMindSync.subscribe(() => {
+    syncRestockRecommendationsWithLiveStock();
+    renderSavedPurchaseOrders();
+  });
+}
+</script>
+{% endblock %}

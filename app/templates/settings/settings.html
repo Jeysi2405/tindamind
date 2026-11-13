@@ -1,0 +1,574 @@
+{% extends "base.html" %}
+
+{% block header_title %}
+<div>
+  <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">System Settings</h1>
+  <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Store Profile Banner Card (from Frontend) -->
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-5">
+      <div id="storeBannerAvatar" class="w-16 h-16 rounded-2xl bg-[#8D6E63] text-white flex items-center justify-center text-2xl font-black shadow-sm shrink-0">
+        {{ (settings.store_name[:2] if settings and settings.store_name else 'TM')|upper }}
+      </div>
+      <div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 id="storeBannerName" class="text-xl font-extrabold text-gray-900">{{ settings.store_name if settings else 'Aling Terry Store #01' }}</h2>
+          <span class="text-xs font-bold px-3 py-1 rounded-full bg-[#D6F5D0] text-[#41A538]">Active Plan</span>
+        </div>
+        <p class="text-xs text-gray-400 font-medium mt-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-location-dot text-gray-400"></i> <span id="storeBannerLocation">{{ settings.store_address if settings and settings.store_address else 'Tondo, Manila' }}</span>
+        </p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2 self-start sm:self-auto">
+      <button onclick="openModal('mlSettingsModal')" class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-2xl transition">
+        <i class="fa-solid fa-robot mr-1"></i> ML Rules
+      </button>
+      <button onclick="openModal('printerModal')" class="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-2xl transition">
+        <i class="fa-solid fa-print mr-1"></i> Printer
+      </button>
+      <button onclick="openModal('aboutModal')" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl transition">
+        <i class="fa-solid fa-circle-info mr-1"></i> About
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Tabs Navigation -->
+  <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
+    <a href="{{ url_for('settings.index', tab='profile') }}" class="px-5 py-2 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if active_tab == 'profile' else 'bg-white text-gray-600 hover:bg-gray-100' }}">
+      <span class="inline-flex items-center gap-2"><i class="fa-solid fa-store text-sm"></i> Store Profile & Receipt</span>
+    </a>
+    <a href="{{ url_for('settings.index', tab='payments') }}" class="px-5 py-2 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if active_tab == 'payments' else 'bg-white text-gray-600 hover:bg-gray-100' }}">
+      <span class="inline-flex items-center gap-2"><i class="fa-solid fa-qrcode text-sm"></i> Digital Payments & QR</span>
+    </a>
+    <a href="{{ url_for('settings.index', tab='staff') }}" class="px-5 py-2 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if active_tab == 'staff' else 'bg-white text-gray-600 hover:bg-gray-100' }}">
+      <span class="inline-flex items-center gap-2"><i class="fa-solid fa-users-gear text-sm"></i> Cashier & Staff (RBAC)</span>
+    </a>
+    <a href="{{ url_for('settings.index', tab='backup') }}" class="px-5 py-2 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if active_tab == 'backup' else 'bg-white text-gray-600 hover:bg-gray-100' }}">
+      <span class="inline-flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down text-sm"></i> Data Backup</span>
+    </a>
+  </div>
+
+  <!-- Tab 1: Store Profile & Receipt Customization -->
+  {% if active_tab == 'profile' %}
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="lg:col-span-7 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+      <div class="border-b border-gray-100 pb-3">
+        <h2 class="text-xl font-bold text-gray-900">Store Profile & Receipt Details</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Customize your store brand identity and official receipt printout header & footer.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('settings.update_profile') }}" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Store / Business Name *</label>
+          <input type="text" id="input_store_name" name="store_name" value="{{ settings.store_name }}" required placeholder="e.g. TindaMind Sari-Sari Store…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Tagline or Slogan</label>
+          <input type="text" id="input_tagline" name="tagline" value="{{ settings.tagline or '' }}" placeholder="e.g. Your neighborhood daily essentials…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Store Address / Location</label>
+            <input type="text" id="input_address" name="store_address" value="{{ settings.store_address or '' }}" placeholder="e.g. 123 Barangay Hall St., Metro Manila…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Contact Phone Number</label>
+            <input type="text" id="input_contact" name="contact_number" value="{{ settings.contact_number or '' }}" placeholder="e.g. 0917-123-4567…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Receipt Footer Note *</label>
+          <textarea id="input_footer" name="receipt_footer" rows="3" required placeholder="e.g. Salamat sa pagbili! Balik po kayo…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">{{ settings.receipt_footer }}</textarea>
+          <p class="text-[11px] text-gray-400 mt-1">Appears at the very bottom of every printed receipt.</p>
+        </div>
+
+        <div class="pt-2">
+          <button type="submit" class="px-6 py-2.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-bold text-sm rounded-xl shadow-sm transition active:scale-[0.98]">
+            Save Store Profile
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Live Thermal Receipt Mockup Preview -->
+    <div class="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Live Receipt Preview</h3>
+        <span class="text-xs bg-emerald-50 text-emerald-600 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">58mm Thermal</span>
+      </div>
+
+      <div class="bg-amber-50/40 p-6 rounded-2xl border border-dashed border-amber-300 font-mono text-xs text-gray-800 space-y-3 shadow-inner">
+        <div class="text-center space-y-0.5">
+          <p class="font-extrabold text-sm uppercase text-gray-900" id="preview_name">{{ settings.store_name }}</p>
+          <p class="text-[11px] text-gray-500" id="preview_tagline">{{ settings.tagline or 'Your neighborhood daily essentials' }}</p>
+          <p class="text-[11px] text-gray-500" id="preview_address">{{ settings.store_address or '123 Barangay Hall St.' }}</p>
+          <p class="text-[11px] text-gray-500" id="preview_contact">Tel: {{ settings.contact_number or '0917-123-4567' }}</p>
+        </div>
+
+        <div class="border-b border-dashed border-gray-400 py-1 flex justify-between text-[11px] text-gray-500">
+          <span>TXN #10842</span>
+          <span>Today, 12:30 PM</span>
+        </div>
+
+        <div class="space-y-1.5 py-1">
+          <div class="flex justify-between"><span>2x Instant Noodles</span><span>₱26.00</span></div>
+          <div class="flex justify-between"><span>1x Apple Juice</span><span>₱16.00</span></div>
+          <div class="flex justify-between"><span>1x Canned Sardines</span><span>₱26.00</span></div>
+        </div>
+
+        <div class="border-t border-dashed border-gray-400 pt-2 space-y-1 font-bold">
+          <div class="flex justify-between text-sm"><span>TOTAL:</span><span class="text-gray-900">₱68.00</span></div>
+          <div class="flex justify-between text-[11px] font-normal text-gray-600"><span>Cash Tendered:</span><span>₱100.00</span></div>
+          <div class="flex justify-between text-[11px] font-normal text-gray-600"><span>Change:</span><span>₱32.00</span></div>
+        </div>
+
+        <div class="border-t border-dashed border-gray-400 pt-3 text-center space-y-1">
+          <p class="text-[11px] font-semibold text-gray-700 italic" id="preview_footer">{{ settings.receipt_footer }}</p>
+          <p class="text-[10px] text-gray-400">Powered by TindaMind POS</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tab 2: Digital Payments & QR Configuration -->
+  {% if active_tab == 'payments' %}
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="lg:col-span-7 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+      <div class="border-b border-gray-100 pb-3">
+        <h2 class="text-xl font-bold text-gray-900">Digital Payments & QR Configuration</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Set up your store's GCash / Maya digital wallet and QR code for cashier checkout.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('settings.update_payments') }}" enctype="multipart/form-data" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">GCash / Account Name</label>
+            <input type="text" name="gcash_name" value="{{ settings.gcash_name or '' }}" placeholder="e.g. Maria Santos…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">GCash Mobile Number</label>
+            <input type="text" name="gcash_number" value="{{ settings.gcash_number or '' }}" placeholder="e.g. 0917-123-4567…" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b] transition">
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <label class="block text-xs font-semibold text-gray-700">Payment Methods Supported</label>
+          <div class="flex items-center gap-6">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" name="accept_cash" value="1" {% if settings.accept_cash %}checked{% endif %} class="w-4 h-4 text-emerald-600 rounded">
+              <span>Accept Cash</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" name="accept_gcash" value="1" {% if settings.accept_gcash %}checked{% endif %} class="w-4 h-4 text-emerald-600 rounded">
+              <span>Accept GCash / QR</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Upload Merchant QR Code Image</label>
+          <input type="file" name="qr_image" accept="image/png, image/jpeg, image/webp" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#c5f87b] file:text-gray-900 hover:file:bg-[#b2f357] cursor-pointer">
+          <p class="text-[11px] text-gray-400 mt-1">Upload a clear screenshot or scan of your store's official GCash / Maya QR code.</p>
+        </div>
+
+        <div class="pt-3">
+          <button type="submit" class="px-6 py-2.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-bold text-sm rounded-xl shadow-sm transition active:scale-[0.98]">
+            Save Payment Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- QR Code Preview Card -->
+    <div class="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Customer QR Code Display</h3>
+        <span class="text-xs bg-blue-50 text-blue-600 font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">POS Checkout</span>
+      </div>
+
+      <div class="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center space-y-4">
+        {% if settings.qr_image %}
+          <img src="{{ url_for('static', filename='uploads/' + settings.qr_image) }}" alt="GCash QR Code" class="w-48 h-48 object-contain rounded-xl shadow-md border bg-white p-2">
+        {% else %}
+          <div class="w-48 h-48 bg-white rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center p-4 text-gray-400">
+            <i class="fa-solid fa-qrcode text-4xl mb-2 text-gray-300"></i>
+            <span class="text-xs">No custom QR uploaded yet</span>
+          </div>
+        {% endif %}
+
+        <div class="space-y-1">
+          <div class="text-sm font-extrabold text-gray-900">{{ settings.gcash_name or 'Store Cashier' }}</div>
+          <div class="text-xs text-gray-500 font-mono">{{ settings.gcash_number or 'No mobile number configured' }}</div>
+          <p class="text-[11px] text-gray-400 pt-1">Scan to pay with GCash or Maya at checkout</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tab 3: Cashier & Staff Management -->
+  {% if active_tab == 'staff' %}
+  <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4">
+      <div>
+        <h2 class="text-xl font-bold text-gray-900">Cashier & Staff Accounts (RBAC)</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Manage front-desk cashiers, assign login credentials, and reset quick access PIN codes.</p>
+      </div>
+      <button onclick="openModal('addStaffModal')" type="button" class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-semibold text-sm rounded-2xl shadow-sm transition whitespace-nowrap active:scale-[0.98]">
+        <i class="fa-solid fa-user-plus"></i> Add New Cashier
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-gray-600">
+        <thead>
+          <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+            <th class="py-3.5 pr-4">Staff Member</th>
+            <th class="py-3.5 px-4">Username</th>
+            <th class="py-3.5 px-4">Role</th>
+            <th class="py-3.5 px-4">Quick PIN</th>
+            <th class="py-3.5 px-4">Date Added</th>
+            <th class="py-3.5 pl-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for member in staff_members %}
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="py-4 pr-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-700">
+                  {{ member.full_name[:2]|upper }}
+                </div>
+                <div>
+                  <div class="font-bold text-gray-900 text-sm">{{ member.full_name }}</div>
+                  <div class="text-xs text-gray-400">{{ member.email or 'Front-desk operator' }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-4 px-4 font-mono text-xs font-semibold text-gray-700">{{ member.username }}</td>
+            <td class="py-4 px-4">
+              {% if member.role and member.role.role_name.lower() == 'admin' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">👑 Owner / Admin</span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Cashier</span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-4 text-xs font-mono">
+              {% if member.pin_code %}
+                <span class="text-emerald-600 font-semibold">● ● ● ●</span>
+              {% else %}
+                <span class="text-gray-400 italic">Not set</span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-4 text-xs text-gray-500">{{ member.created_at.strftime('%b %d, %Y') if member.created_at else 'Initial' }}</td>
+            <td class="py-4 pl-4 text-right">
+              <div class="inline-flex items-center gap-1.5 text-gray-700">
+                <button onclick="openEditStaffModal({{ member.user_id }}, '{{ member.full_name|replace("'", "\\'") }}', '{{ member.username }}', '{{ member.pin_code or '' }}')" class="p-1.5 hover:text-emerald-600 transition" title="Edit Staff">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                {% if member.user_id != current_user.user_id and (member.role and member.role.role_name.lower() != 'admin') %}
+                <form method="POST" action="{{ url_for('settings.delete_staff', user_id=member.user_id) }}" class="inline" onsubmit="return confirm('Remove cashier {{ member.full_name }}?');">
+                  <button type="submit" class="p-1.5 hover:text-rose-600 transition" title="Delete Cashier"><i class="fa-solid fa-trash"></i></button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tab 4: Data Backup -->
+  {% if active_tab == 'backup' %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+    <!-- Card 1: Full Database Backup -->
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4 flex flex-col justify-between h-full">
+      <div class="space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <i class="fa-solid fa-database text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">Database Snapshot</h3>
+          <p class="text-xs text-gray-400 mt-1">Direct download of your SQLite database file (`tindamind.db`) containing all store data.</p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl text-xs space-y-1 font-mono text-gray-600">
+          <div><span class="font-semibold text-gray-700">File Size:</span> {{ db_size_kb }} KB</div>
+          <div><span class="font-semibold text-gray-700">Engine:</span> SQLite 3</div>
+        </div>
+      </div>
+      <a href="{{ url_for('settings.backup_database') }}" class="w-full inline-flex items-center justify-center gap-2 py-3 bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-extrabold text-sm rounded-2xl shadow-sm transition active:scale-[0.98]">
+        <i class="fa-solid fa-download"></i> Download Database (.db)
+      </a>
+    </div>
+
+    <!-- Card 2: Sales History CSV -->
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4 flex flex-col justify-between h-full">
+      <div class="space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">Sales Transactions</h3>
+          <p class="text-xs text-gray-400 mt-1">Export full sales audit log, customer checkout receipts, and line items in CSV format.</p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl text-xs space-y-1 font-mono text-gray-600">
+          <div><span class="font-semibold text-gray-700">Total Records:</span> {{ total_sales_count }} sales</div>
+          <div><span class="font-semibold text-gray-700">Format:</span> CSV (Excel compatible)</div>
+        </div>
+      </div>
+      <a href="{{ url_for('settings.backup_sales_csv') }}" class="w-full inline-flex items-center justify-center gap-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-sm rounded-2xl transition active:scale-[0.98]">
+        <i class="fa-solid fa-file-csv"></i> Export Sales (.csv)
+      </a>
+    </div>
+
+    <!-- Card 3: Inventory Catalog CSV -->
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-4 flex flex-col justify-between h-full">
+      <div class="space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+          <i class="fa-solid fa-boxes-stacked text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">Product Inventory Catalog</h3>
+          <p class="text-xs text-gray-400 mt-1">Export complete product inventory with SKUs, supplier, cost prices, selling prices, and stock.</p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl text-xs space-y-1 font-mono text-gray-600">
+          <div><span class="font-semibold text-gray-700">Catalog SKUs:</span> {{ total_products_count }} items</div>
+          <div><span class="font-semibold text-gray-700">Format:</span> CSV (Excel compatible)</div>
+        </div>
+      </div>
+      <a href="{{ url_for('settings.backup_inventory_csv') }}" class="w-full inline-flex items-center justify-center gap-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-sm rounded-2xl transition active:scale-[0.98]">
+        <i class="fa-solid fa-file-csv"></i> Export Inventory (.csv)
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal: Add New Cashier -->
+<div id="addStaffModal" onclick="if(event.target === this) closeModal('addStaffModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Add New Cashier</h3>
+      <button onclick="closeModal('addStaffModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('settings.add_staff') }}" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Full Name *</label>
+        <input type="text" name="full_name" required placeholder="e.g. Maria Santos…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Username (Login ID) *</label>
+        <input type="text" name="username" required placeholder="e.g. cashier2…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Password *</label>
+        <input type="password" name="password" required placeholder="Enter password…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">4-Digit Quick PIN (Optional)</label>
+        <input type="text" maxlength="4" pattern="[0-9]{4}" name="pin_code" placeholder="e.g. 1234…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+        <p class="text-[11px] text-gray-400 mt-1">Used for fast terminal switching at the counter.</p>
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t border-gray-100">
+        <button type="button" onclick="closeModal('addStaffModal')" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] hover:bg-[#8ee469] font-bold text-gray-900 rounded-xl transition">Create Cashier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Edit Staff Member -->
+<div id="editStaffModal" onclick="if(event.target === this) closeModal('editStaffModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Edit Staff Credentials</h3>
+      <button onclick="closeModal('editStaffModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form id="editStaffForm" method="POST" action="" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Full Name</label>
+        <input type="text" id="edit_full_name" name="full_name" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Reset Password (leave blank to keep current)</label>
+        <input type="password" name="password" placeholder="New password…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Quick PIN Code</label>
+        <input type="text" maxlength="4" pattern="[0-9]{4}" id="edit_pin_code" name="pin_code" placeholder="4-digit PIN…" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#c5f87b]">
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t border-gray-100">
+        <button type="button" onclick="closeModal('editStaffModal')" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] hover:bg-[#8ee469] font-bold text-gray-900 rounded-xl transition">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Inventory & ML Thresholds -->
+<div id="mlSettingsModal" onclick="if(event.target === this) closeModal('mlSettingsModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Inventory & ML Forecast Settings</h3>
+      <button onclick="closeModal('mlSettingsModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form onsubmit="event.preventDefault(); closeModal('mlSettingsModal'); if(typeof showToast==='function') showToast('ML Forecast threshold rules applied!','success');" class="space-y-3 text-sm">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Default Low-Stock Reorder Level (Units)</label>
+        <input type="number" value="10" min="1" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">ML Forecasting Horizon</label>
+        <select class="w-full px-3 py-2 text-sm border rounded-xl bg-white text-gray-800">
+          <option selected>7-Day Rolling Demand Prediction (Ridge Regression)</option>
+          <option>14-Day Rolling Demand Prediction</option>
+        </select>
+      </div>
+      <div class="p-3 bg-purple-50 rounded-2xl border border-purple-100 text-xs text-purple-700">
+        <i class="fa-solid fa-sparkles mr-1"></i> Stockout risk automatically classifies products into <strong>High</strong>, <strong>Moderate</strong>, and <strong>Low</strong> risk based on daily velocity.
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('mlSettingsModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl hover:bg-[#b2f357]">Apply Rules</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Printer Setup -->
+<div id="printerModal" onclick="if(event.target === this) closeModal('printerModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Receipt Printer Setup</h3>
+      <button onclick="closeModal('printerModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-3 text-sm text-gray-600">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Select Printer Connection</label>
+        <select class="w-full px-3 py-2 text-sm border rounded-xl bg-white text-gray-800">
+          <option>Thermal POS Printer (58mm)</option>
+          <option>Thermal POS Printer (80mm)</option>
+          <option>Network / USB Printer</option>
+        </select>
+      </div>
+      <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-3 text-xs text-emerald-700 font-medium">
+        <i class="fa-solid fa-circle-check text-base"></i> Printer connected & ready for checkout.
+      </div>
+    </div>
+    <div class="pt-3 flex justify-end gap-2 border-t">
+      <button type="button" onclick="closeModal('printerModal')" class="px-4 py-2 text-sm text-gray-500">Close</button>
+      <button onclick="window.print()" class="px-5 py-2 text-sm bg-[#c5f87b] font-bold text-gray-900 rounded-xl">Print Test Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: About TindaMind -->
+<div id="aboutModal" onclick="if(event.target === this) closeModal('aboutModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-orange-50 text-[#F2994A] flex items-center justify-center text-lg">
+          <i class="fa-solid fa-cash-register"></i>
+        </div>
+        <div>
+          <h3 class="font-black text-gray-900 text-lg leading-tight">TindaMind</h3>
+          <p class="text-[11px] text-gray-400 font-medium">Version 1.0 • Smart Store Management</p>
+        </div>
+      </div>
+      <button onclick="closeModal('aboutModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+
+    <div class="space-y-3 text-xs text-gray-600 leading-relaxed">
+      <p>
+        <strong class="text-gray-900">TindaMind</strong> is an all-in-one Point-of-Sale (POS), inventory tracking, and predictive sales analytics platform built specifically for neighborhood sari-sari stores, bakeries, and local micro-retailers.
+      </p>
+
+      <div class="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 space-y-2">
+        <p class="font-bold text-gray-800 uppercase text-[10px] tracking-wider">Key System Capabilities</p>
+        <ul class="space-y-1.5 text-gray-600">
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>Fast POS Checkout:</strong> Cash & QR payments with instant digital receipts and automatic stock deduction.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>Smart Inventory & Restocking:</strong> Real-time low-stock alerts and automated supplier purchase orders.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+            <span><strong>7-Day Demand Forecasting:</strong> Machine learning predictions that prevent stockouts and reduce spoilage.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pt-2 flex justify-end border-t border-gray-100">
+      <button type="button" onclick="closeModal('aboutModal')" class="px-5 py-2 text-xs bg-[#c5f87b] hover:bg-[#b2f357] text-gray-900 font-bold rounded-xl transition">Got It</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function openEditStaffModal(userId, fullName, username, pinCode) {
+  document.getElementById('editStaffForm').action = '/settings/staff/edit/' + userId;
+  document.getElementById('edit_full_name').value = fullName;
+  document.getElementById('edit_pin_code').value = pinCode;
+  openModal('editStaffModal');
+}
+
+// Live Receipt Preview dynamic update
+const inputName = document.getElementById('input_store_name');
+const inputTagline = document.getElementById('input_tagline');
+const inputAddress = document.getElementById('input_address');
+const inputContact = document.getElementById('input_contact');
+const inputFooter = document.getElementById('input_footer');
+
+if (inputName) {
+  inputName.addEventListener('input', e => {
+    const val = e.target.value.trim() || 'TindaMind Sari-Sari Store';
+    document.getElementById('preview_name').innerText = val;
+    document.getElementById('storeBannerName').innerText = val;
+  });
+}
+if (inputTagline) {
+  inputTagline.addEventListener('input', e => {
+    document.getElementById('preview_tagline').innerText = e.target.value.trim() || 'Your neighborhood daily essentials';
+  });
+}
+if (inputAddress) {
+  inputAddress.addEventListener('input', e => {
+    const val = e.target.value.trim() || '123 Barangay Hall St.';
+    document.getElementById('preview_address').innerText = val;
+    document.getElementById('storeBannerLocation').innerText = val;
+  });
+}
+if (inputContact) {
+  inputContact.addEventListener('input', e => {
+    document.getElementById('preview_contact').innerText = 'Tel: ' + (e.target.value.trim() || '0917-123-4567');
+  });
+}
+if (inputFooter) {
+  inputFooter.addEventListener('input', e => {
+    document.getElementById('preview_footer').innerText = e.target.value.trim() || 'Salamat sa pagbili! Balik po kayo.';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+
+{% block header_title %}
+<div>
+  <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Inventory Management</h1>
+  <p class="text-base font-medium text-[#F4B436] mt-0.5">Manage your store with ease.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Live Inventory Sync Bar -->
+  <div class="flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border border-gray-100 shadow-2xs text-xs">
+    <div class="flex items-center gap-2 text-gray-600 font-semibold">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+      <span>Live POS Stock & New Product Sync Active</span>
+    </div>
+    <button onclick="resetLiveInventory()" class="text-gray-400 hover:text-rose-500 font-semibold transition">
+      <i class="fa-solid fa-rotate-left mr-1"></i> Reset Local Cache
+    </button>
+  </div>
+
+  <!-- Layout: Catalog Left, Metrics Right -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="lg:col-span-8 bg-white rounded-3xl p-6 shadow-sm border border-gray-100/80 space-y-5">
+      <!-- Search & Add -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <form method="GET" action="{{ url_for('inventory.index') }}" class="relative flex-1">
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search product name, SKU, or category…" class="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50/80 border border-gray-200/90 rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+          <i class="fa-solid fa-magnifying-glass text-gray-400 absolute left-3.5 top-3.5"></i>
+          {% if active_cat %}<input type="hidden" name="cat" value="{{ active_cat }}">{% endif %}
+        </form>
+        <button onclick="openAddProductModal()" type="button" class="inline-flex items-center justify-center px-5 py-2.5 bg-[#9df079] hover:bg-[#8ee469] text-gray-900 font-semibold text-sm rounded-2xl shadow-sm transition whitespace-nowrap active:scale-[0.98]">
+          + Add New Product
+        </button>
+      </div>
+
+      <!-- Categories Filter -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-sm no-scrollbar">
+        <a href="{{ url_for('inventory.index', q=search_query) }}" class="px-5 py-1.5 rounded-full font-semibold transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 shadow-sm' if not active_cat else 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">All Items</a>
+        {% for cat in categories %}
+        <a href="{{ url_for('inventory.index', cat=cat.category_name, q=search_query) }}" class="px-5 py-1.5 rounded-full font-medium transition whitespace-nowrap {{ 'bg-[#c5f87b] text-gray-900 font-semibold shadow-sm' if active_cat == cat.category_name or selected_category|string == cat.category_id|string else 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">{{ cat.category_name }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-600">
+          <thead>
+            <tr class="text-[11px] font-bold tracking-wider text-gray-400 border-b border-gray-100 uppercase">
+              <th class="py-3.5 pr-4">Product Details</th>
+              <th class="py-3.5 px-4">Category</th>
+              <th class="py-3.5 px-4">Cost Price</th>
+              <th class="py-3.5 px-4">Selling Price</th>
+              <th class="py-3.5 px-4">Stock Level</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 pl-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTableBody" class="divide-y divide-gray-100">
+            {% for p in products %}
+            <tr id="inv-row-{{ p.product_id }}" 
+                class="inv-product-row hover:bg-gray-50/70 transition"
+                data-id="{{ p.product_id }}"
+                data-name="{{ p.product_name }}"
+                data-base-stock="{{ p.stock_quantity }}"
+                data-reorder="{{ p.reorder_level }}"
+                data-price="{{ p.selling_price }}">
+              <td class="py-4 pr-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-xl shrink-0">
+                    {% if 'Soup' in p.product_name %}🥫{% elif 'Noodle' in p.product_name %}🍜{% elif 'Chip' in p.product_name or 'Cheapy' in p.product_name %}🍟{% elif 'Sardine' in p.product_name %}🐟{% elif 'Juice' in p.product_name %}🧃{% else %}📦{% endif %}
+                  </div>
+                  <div>
+                    <div class="font-bold text-gray-900 text-base leading-snug">{{ p.product_name }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">SKU: TM-{{ "%03d"|format(p.product_id) }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4 text-xs font-semibold text-gray-500 uppercase">{{ p.category.category_name }}</td>
+              <td class="py-4 px-4 text-sm text-gray-500 font-mono">₱{{ "{:,.2f}".format(p.cost_price) }}</td>
+              <td class="py-4 px-4 text-sm text-gray-700 font-mono font-medium">₱{{ "{:,.2f}".format(p.selling_price) }}</td>
+              <td class="py-4 px-4 font-bold text-gray-900">
+                <span id="inv-stock-text-{{ p.product_id }}">{{ p.stock_quantity }} UNITS</span>
+              </td>
+              <td id="inv-status-cell-{{ p.product_id }}" class="py-4 px-4">
+                {% if p.stock_quantity == 0 %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✕ Out of Stock</span>
+                {% elif p.stock_quantity <= p.reorder_level %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FAD2CF] text-[#E05345]">Low Stock</span>
+                {% else %}
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#D6F5D0] text-[#41A538]">In Stock</span>
+                {% endif %}
+              </td>
+              <td class="py-4 pl-4 text-right">
+                <div class="inline-flex items-center gap-1.5 text-gray-700">
+                  <button onclick="quickRestockItem({{ p.product_id }}, 10)" title="Quick Restock +10" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] transition">
+                    +10
+                  </button>
+                  <button onclick='openEditModal({{ p.product_id }}, {{ p.product_name|tojson }}, {{ p.category_id }}, {{ p.supplier_id }}, {{ p.cost_price }}, {{ p.selling_price }}, {{ p.stock_quantity }}, {{ p.reorder_level }})' aria-label="Edit Product" class="p-1.5 hover:text-emerald-600 transition">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <form method="POST" action="{{ url_for('inventory.delete_product', product_id=p.product_id) }}" class="inline" onsubmit="return handleDeleteProduct(event, '{{ p.product_id }}', '{{ p.product_name|replace("'", "\\'") }}');">
+                    <button type="submit" aria-label="Delete Product" class="p-1.5 hover:text-rose-600 transition"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr id="emptyCatalogRow"><td colspan="7" class="text-center py-10 text-gray-400">No items match your query.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Metrics Column -->
+    <div class="lg:col-span-4 space-y-4">
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">TOTAL SKUS</p>
+          <p id="invTotalSkus" class="text-3xl font-extrabold text-gray-900">{{ total_skus }}</p>
+          <p class="text-xs font-semibold text-[#5CB85C] pt-1">Active products</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#E8F3FF] flex items-center justify-center text-[#4DA1FF] text-xl font-bold"><i class="fa-solid fa-box"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">LOW STOCK ALERTS</p>
+          <p id="invLowStockCount" class="text-3xl font-extrabold text-[#F4A838]">{{ low_stock }}</p>
+          <p class="text-xs font-semibold text-[#E59728] pt-1">Reorder soon</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#FFF9E6] flex items-center justify-center text-[#F5B842] text-xl font-bold"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">OUT OF STOCK</p>
+          <p id="invOutStockCount" class="text-3xl font-extrabold text-[#9E3636]">{{ out_of_stock }}</p>
+          <p class="text-xs font-semibold text-[#D64545] pt-1">Urgent restock</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#FDEAEA] flex items-center justify-center text-[#E56A6A] text-xl font-bold"><i class="fa-solid fa-circle-xmark"></i></div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-start justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 tracking-wider uppercase">TOTAL STOCK VALUE</p>
+          <p id="invTotalValue" class="text-3xl font-extrabold text-gray-900">₱{{ "{:,.2f}".format(total_val) }}</p>
+          <p class="text-xs font-medium text-emerald-600 pt-1">Estimated retail value</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-[#EAF8E6] flex items-center justify-center text-[#55B745] text-xl font-bold"><i class="fa-solid fa-wallet"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add New Product Modal -->
+<div id="addProductModal" onclick="if(event.target === this) closeModal('addProductModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <div>
+        <h3 class="font-bold text-gray-900 text-lg">Add New Product</h3>
+        <p class="text-[11px] text-gray-400">Saves to database & automatically syncs to POS Terminal</p>
+      </div>
+      <button onclick="closeModal('addProductModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+
+    <div id="duplicateWarningBox" class="hidden p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 space-y-1">
+      <div class="flex items-center gap-2 font-extrabold text-xs text-amber-900">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+        <span id="duplicateWarningTitle">Possible Duplicate Item Detected!</span>
+      </div>
+      <p id="duplicateWarningText" class="text-[11px] leading-relaxed"></p>
+    </div>
+
+    <form id="addProductForm" method="POST" action="{{ url_for('inventory.add_product') }}" onsubmit="handleAddProductSubmit(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Product Name</label>
+        <input type="text" id="newProductNameInput" name="product_name" oninput="checkDuplicateProduct()" required placeholder="e.g. Corned Beef 150g…" class="w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+          <select id="newProductCatInput" name="category_id" class="w-full px-3 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            {% for cat in categories %}
+            <option value="{{ cat.category_id }}" data-cat-name="{{ cat.category_name }}">{{ cat.category_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Supplier</label>
+          <select id="newProductSupInput" name="supplier_id" class="w-full px-3 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            {% for sup in suppliers %}
+            <option value="{{ sup.supplier_id }}">{{ sup.supplier_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Cost Price (₱)</label>
+          <input type="number" step="0.01" id="newProductCostInput" name="cost_price" required placeholder="0.00" class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Selling Price (₱)</label>
+          <input type="number" step="0.01" id="newProductPriceInput" name="selling_price" required placeholder="0.00" class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Initial Stock</label>
+          <input type="number" id="newProductStockInput" name="stock_quantity" value="15" min="0" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Reorder Level</label>
+          <input type="number" id="newProductReorderInput" name="reorder_level" value="5" min="1" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('addProductModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" id="saveNewProductBtn" class="px-5 py-2 text-sm bg-[#9df079] hover:bg-[#8ee469] font-bold text-gray-900 rounded-xl transition">Save & Add to POS</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editProductModal" onclick="if(event.target === this) closeModal('editProductModal')" class="hidden fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-bold text-gray-900 text-lg">Edit Product</h3>
+      <button onclick="closeModal('editProductModal')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form id="editProductForm" method="POST" action="" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Product Name</label>
+        <input type="text" id="edit_name" name="product_name" required class="w-full px-3 py-2 text-sm border rounded-xl">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+          <select id="edit_category_id" name="category_id" required class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
+            {% for cat in categories %}
+            <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Supplier</label>
+          <select id="edit_supplier_id" name="supplier_id" required class="w-full px-3 py-2 text-sm border rounded-xl bg-white">
+            {% for sup in suppliers %}
+            <option value="{{ sup.supplier_id }}">{{ sup.supplier_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Cost (₱)</label>
+          <input type="number" step="0.01" id="edit_cost" name="cost_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Selling (₱)</label>
+          <input type="number" step="0.01" id="edit_price" name="selling_price" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Stock</label>
+          <input type="number" id="edit_stock" name="stock_quantity" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Reorder Level</label>
+          <input type="number" id="edit_reorder" name="reorder_level" required class="w-full px-3 py-2 text-sm border rounded-xl">
+        </div>
+      </div>
+      <div class="pt-3 flex justify-end gap-2 border-t">
+        <button type="button" onclick="closeModal('editProductModal')" class="px-4 py-2 text-sm text-gray-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 text-sm bg-[#9df079] font-bold rounded-xl">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let hasDuplicateMatch = false;
+let matchedDuplicateNames = [];
+
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function openAddProductModal() {
+  document.getElementById('addProductForm').reset();
+  document.getElementById('duplicateWarningBox').classList.add('hidden');
+  hasDuplicateMatch = false;
+  matchedDuplicateNames = [];
+  openModal('addProductModal');
+}
+
+function normalizeItemName(str) {
+  return String(str).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '');
+}
+
+function getAllCatalogNames() {
+  const names = [];
+  document.querySelectorAll('.inv-product-row').forEach(row => {
+    if (row.dataset.name) names.push(row.dataset.name);
+  });
+  return names;
+}
+
+function checkDuplicateProduct() {
+  const rawInput = document.getElementById('newProductNameInput').value.trim();
+  const warningBox = document.getElementById('duplicateWarningBox');
+  const warningTitle = document.getElementById('duplicateWarningTitle');
+  const warningText = document.getElementById('duplicateWarningText');
+  const saveBtn = document.getElementById('saveNewProductBtn');
+
+  if (rawInput.length < 2) {
+    warningBox.classList.add('hidden');
+    hasDuplicateMatch = false;
+    matchedDuplicateNames = [];
+    saveBtn.innerText = 'Save & Add to POS';
+    return;
+  }
+
+  const normInput = normalizeItemName(rawInput);
+  const existingNames = getAllCatalogNames();
+
+  const exactMatches = existingNames.filter(n => normalizeItemName(n) === normInput);
+  const similarMatches = existingNames.filter(n => {
+    const normExisting = normalizeItemName(n);
+    return normExisting !== normInput && (normExisting.includes(normInput) || normInput.includes(normExisting));
+  });
+
+  if (exactMatches.length > 0) {
+    hasDuplicateMatch = true;
+    matchedDuplicateNames = exactMatches;
+    warningBox.className = 'p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1';
+    warningTitle.className = 'flex items-center gap-2 font-extrabold text-xs text-rose-900';
+    warningTitle.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-600"></i> Exact / Identical Item Already Exists!';
+    warningText.innerHTML = `<strong>"${exactMatches.join(', ')}"</strong> is already in your inventory.`;
+    saveBtn.innerText = 'Add Anyway';
+  } else if (similarMatches.length > 0) {
+    hasDuplicateMatch = true;
+    matchedDuplicateNames = similarMatches;
+    warningBox.className = 'p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 space-y-1';
+    warningTitle.className = 'flex items-center gap-2 font-extrabold text-xs text-amber-900';
+    warningTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Similar Item Found in Catalog';
+    warningText.innerHTML = `Looks very similar to: <strong>"${similarMatches.join(', ')}"</strong>.`;
+    saveBtn.innerText = 'Confirm & Add';
+  } else {
+    warningBox.classList.add('hidden');
+    hasDuplicateMatch = false;
+    matchedDuplicateNames = [];
+    saveBtn.innerText = 'Save & Add to POS';
+  }
+}
+
+function handleAddProductSubmit(e) {
+  if (hasDuplicateMatch) {
+    const proceed = confirm(`⚠️ Duplicate Warning:\n"${matchedDuplicateNames.join(', ')}" already exists.\n\nAdd anyway?`);
+    if (!proceed) {
+      e.preventDefault();
+      return;
+    }
+  }
+  if (window.TindaMindSync) window.TindaMindSync.emit('product_added');
+}
+
+function handleDeleteProduct(e, productId, productName) {
+  if (!confirm(`Delete ${productName}?`)) {
+    e.preventDefault();
+    return false;
+  }
+  const deletedIds = JSON.parse(localStorage.getItem('tindamind_deleted_ids') || '[]');
+  if (!deletedIds.includes(String(productId))) {
+    deletedIds.push(String(productId));
+    localStorage.setItem('tindamind_deleted_ids', JSON.stringify(deletedIds));
+  }
+  if (window.TindaMindSync) window.TindaMindSync.emit('product_deleted', { id: String(productId) });
+  return true;
+}
+
+function openEditModal(id, name, catId, supId, cost, price, stock, reorder) {
+  const key = String(id);
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+  const overridesMap = JSON.parse(localStorage.getItem('tindamind_product_overrides') || '{}');
+  const currentStock = Object.prototype.hasOwnProperty.call(liveStockMap, key) ? liveStockMap[key] : stock;
+  const ov = overridesMap[key];
+
+  document.getElementById('editProductForm').dataset.editId = key;
+  document.getElementById('editProductForm').action = '/inventory/product/edit/' + key;
+  document.getElementById('edit_name').value = ov ? ov.name : name;
+  if (catId && document.getElementById('edit_category_id')) {
+    document.getElementById('edit_category_id').value = catId;
+  }
+  if (supId && document.getElementById('edit_supplier_id')) {
+    document.getElementById('edit_supplier_id').value = supId;
+  }
+  document.getElementById('edit_cost').value = ov ? ov.cost : cost;
+  document.getElementById('edit_price').value = ov ? ov.price : price;
+  document.getElementById('edit_stock').value = currentStock;
+  document.getElementById('edit_reorder').value = ov ? ov.reorder : reorder;
+  openModal('editProductModal');
+}
+
+document.getElementById('editProductForm')?.addEventListener('submit', function() {
+  const key = String(this.dataset.editId);
+  if (!key) return;
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+  const overridesMap = JSON.parse(localStorage.getItem('tindamind_product_overrides') || '{}');
+
+  const newStock = Math.max(0, parseInt(document.getElementById('edit_stock').value, 10) || 0);
+  liveStockMap[key] = newStock;
+  overridesMap[key] = {
+    name: document.getElementById('edit_name').value.trim(),
+    cost: parseFloat(document.getElementById('edit_cost').value) || 0,
+    price: parseFloat(document.getElementById('edit_price').value) || 0,
+    reorder: parseInt(document.getElementById('edit_reorder').value, 10) || 5
+  };
+
+  localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+  localStorage.setItem('tindamind_product_overrides', JSON.stringify(overridesMap));
+  if (window.TindaMindSync) window.TindaMindSync.emit('product_edited', { id: key });
+});
+
+function quickRestockItem(productId, addUnits) {
+  const key = String(productId);
+  const row = document.getElementById(`inv-row-${key}`);
+  if (!row) return;
+
+  fetch(`/inventory/product/restock/${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ add_units: addUnits })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+    if (data && data.success) {
+      row.dataset.baseStock = data.stock_quantity;
+      liveStockMap[key] = data.stock_quantity;
+    } else {
+      const baseStock = parseInt(row.dataset.baseStock, 10);
+      const currentStock = Object.prototype.hasOwnProperty.call(liveStockMap, key) ? parseInt(liveStockMap[key], 10) : baseStock;
+      liveStockMap[key] = currentStock + addUnits;
+    }
+    localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+    renderRealTimeInventory();
+    if (window.TindaMindSync) window.TindaMindSync.emit('stock_restocked', { id: key });
+    if (typeof showToast === 'function') showToast(`Restocked +${addUnits} units — POS & DB updated!`, 'success');
+  })
+  .catch(() => {
+    const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+    const baseStock = parseInt(row.dataset.baseStock, 10);
+    const currentStock = Object.prototype.hasOwnProperty.call(liveStockMap, key) ? parseInt(liveStockMap[key], 10) : baseStock;
+    liveStockMap[key] = currentStock + addUnits;
+    localStorage.setItem('tindamind_live_stock', JSON.stringify(liveStockMap));
+    renderRealTimeInventory();
+    if (window.TindaMindSync) window.TindaMindSync.emit('stock_restocked', { id: key });
+    if (typeof showToast === 'function') showToast(`Restocked +${addUnits} units — POS updated!`, 'success');
+  });
+}
+
+function renderRealTimeInventory() {
+  const liveStockMap = JSON.parse(localStorage.getItem('tindamind_live_stock') || '{}');
+  const overridesMap = JSON.parse(localStorage.getItem('tindamind_product_overrides') || '{}');
+  const rows = document.querySelectorAll('.inv-product-row');
+
+  let lowStockCount = 0;
+  let outOfStockCount = 0;
+  let totalRetailValue = 0;
+
+  rows.forEach(row => {
+    const key = String(row.dataset.id);
+    const ov = overridesMap[key];
+    if (ov) {
+      row.dataset.name = ov.name;
+      row.dataset.reorder = ov.reorder;
+      row.dataset.price = ov.price;
+      const nameEl = row.querySelector('td:first-child .font-bold');
+      if (nameEl) nameEl.childNodes[0].textContent = ov.name + ' ';
+      const cells = row.querySelectorAll('td');
+      if (cells[2]) cells[2].innerText = '₱' + Number(ov.cost).toFixed(2);
+      if (cells[3]) cells[3].innerText = '₱' + Number(ov.price).toFixed(2);
+    }
+
+    const baseStock = parseInt(row.dataset.baseStock, 10);
+    const reorderLevel = parseInt(row.dataset.reorder, 10);
+    const sellingPrice = parseFloat(row.dataset.price);
+
+    const hasOverride = Object.prototype.hasOwnProperty.call(liveStockMap, key);
+    const activeStock = hasOverride ? Math.max(0, parseInt(liveStockMap[key], 10)) : baseStock;
+
+    totalRetailValue += activeStock * sellingPrice;
+
+    const stockTextEl = document.getElementById(`inv-stock-text-${key}`);
+    if (stockTextEl) {
+      stockTextEl.innerText = `${activeStock} UNITS`;
+      stockTextEl.classList.toggle('text-rose-600', activeStock === 0);
+      stockTextEl.classList.toggle('text-[#F2994A]', hasOverride && activeStock > 0 && activeStock !== baseStock);
+    }
+
+    const statusCell = document.getElementById(`inv-status-cell-${key}`);
+    if (activeStock <= 0) {
+      outOfStockCount++;
+      if (statusCell) statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-600">✕ Out of Stock</span>';
+    } else if (activeStock <= reorderLevel) {
+      lowStockCount++;
+      if (statusCell) statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FAD2CF] text-[#E05345]">Low Stock</span>';
+    } else {
+      if (statusCell) statusCell.innerHTML = '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#D6F5D0] text-[#41A538]">In Stock</span>';
+    }
+  });
+
+  if (rows.length > 0) {
+    document.getElementById('invTotalSkus').innerText = rows.length;
+    document.getElementById('invLowStockCount').innerText = lowStockCount;
+    document.getElementById('invOutStockCount').innerText = outOfStockCount;
+    document.getElementById('invTotalValue').innerText = '₱' + totalRetailValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+
+function resetLiveInventory() {
+  localStorage.removeItem('tindamind_live_stock');
+  localStorage.removeItem('tindamind_custom_products');
+  localStorage.removeItem('tindamind_product_overrides');
+  localStorage.removeItem('tindamind_deleted_ids');
+  if (window.TindaMindSync) window.TindaMindSync.emit('inventory_reset');
+  location.reload();
+}
+
+document.addEventListener('DOMContentLoaded', renderRealTimeInventory);
+if (document.readyState !== 'loading') renderRealTimeInventory();
+if (window.TindaMindSync) {
+  window.TindaMindSync.subscribe(() => renderRealTimeInventory());
+}
+</script>
+{% endblock %}

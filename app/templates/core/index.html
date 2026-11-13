@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}TindaMind - System Architecture & Environment{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Banner Card -->
+    <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="space-y-1">
+                <div class="inline-flex items-center space-x-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Phase 1 Initialized Successfully</span>
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">TindaMind System Architecture</h2>
+                <p class="text-sm text-slate-500">Machine Learning-Based Sales Analytics and Predictive Inventory Management System for Local Micro-Retailers</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="{{ url_for('core.health_check') }}" target="_blank" class="inline-flex items-center space-x-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors">
+                    <i class="fa-solid fa-heart-pulse text-rose-500"></i>
+                    <span>API Health Check</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Environment Metrics Grid -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Metric 1: Python & Web Framework -->
+        <div class="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Core Runtime</span>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                    <i class="fa-brands fa-python text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="text-xl font-extrabold text-slate-900">Python 3.12</div>
+                <p class="text-xs font-medium text-slate-500 mt-0.5">Flask 3.x Factory Pattern</p>
+            </div>
+            <div class="mt-4 flex items-center space-x-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-emerald-600">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Factory Bound</span>
+            </div>
+        </div>
+
+        <!-- Metric 2: Database Layer -->
+        <div class="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Database Layer</span>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <i class="fa-solid fa-database text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="text-xl font-extrabold text-slate-900">SQLite / PostgreSQL</div>
+                <p class="text-xs font-medium text-slate-500 mt-0.5">Flask-SQLAlchemy Bound</p>
+            </div>
+            <div class="mt-4 flex items-center space-x-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-blue-600">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Render SSL Fix Ready</span>
+            </div>
+        </div>
+
+        <!-- Metric 3: Machine Learning Engine -->
+        <div class="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Emerging Tech</span>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    <i class="fa-solid fa-brain text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="text-xl font-extrabold text-slate-900">scikit-learn</div>
+                <p class="text-xs font-medium text-slate-500 mt-0.5">Linear / Ridge Regression</p>
+            </div>
+            <div class="mt-4 flex items-center space-x-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-purple-600">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Phase 5 Prepared</span>
+            </div>
+        </div>
+
+        <!-- Metric 4: Frontend Pipeline -->
+        <div class="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Frontend UI</span>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    <i class="fa-solid fa-palette text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="text-xl font-extrabold text-slate-900">Tailwind CSS</div>
+                <p class="text-xs font-medium text-slate-500 mt-0.5">Jinja2 Master Shell</p>
+            </div>
+            <div class="mt-4 flex items-center space-x-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-amber-600">
+                <i class="fa-solid fa-mobile-screen"></i>
+                <span>Counter-Optimized</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Context & Project Roles -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Team Roster Card -->
+        <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 lg:col-span-2">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Group 10 Development Team</h3>
+                    <p class="text-xs text-slate-500">BSCS 3A APPDEV - Prof. Jefferson Costales</p>
+                </div>
+                <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">Sprint 1</span>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="flex items-center space-x-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
+                        JH
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">James Christian Huelar</div>
+                        <div class="text-xs text-brand-600 font-medium">Project Lead / Scrum Master</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-pink-600 text-white font-bold text-sm">
+                        NA
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">Nicole Achay</div>
+                        <div class="text-xs text-pink-600 font-medium">Front-End / UI-UX Developer</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-sm">
+                        DB
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">Dimple Adel Barrun</div>
+                        <div class="text-xs text-indigo-600 font-medium">Back-End Developer</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-teal-600 text-white font-bold text-sm">
+                        NE
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">Nydia Elveña</div>
+                        <div class="text-xs text-teal-600 font-medium">Emerging Technology / QA Lead</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next Milestones Card -->
+        <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-4">Upcoming Milestones</h3>
+            <div class="mt-4 space-y-3">
+                <div class="flex items-start space-x-3">
+                    <div class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold">2</div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">Database & RBAC Auth</div>
+                        <p class="text-xs text-slate-500">10 relational tables, Bcrypt security, role-based protection</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-bold">3</div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">Master Data CRUD & POS</div>
+                        <p class="text-xs text-slate-500">Products, stock tracking, cashier cart, instant checkout</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-bold">4</div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">ML Demand Forecasting</div>
+                        <p class="text-xs text-slate-500">Rolling sales regression & automated restock POs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

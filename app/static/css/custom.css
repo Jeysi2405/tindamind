@@ -1,0 +1,48 @@
+/* ==========================================================================
+   TindaMind - Custom UI Stylesheet
+   Micro-retail POS & Predictive Inventory Management Platform
+   ========================================================================== */
+
+/* Numeric Alignment & POS Currency Display */
+.font-tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Custom Scrollbar for Sidebar & Data Tables */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Sidebar Custom Scrollbar (Dark Theme) */
+#app-sidebar::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+
+#app-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Interactive Badge Transitions */
+.badge-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive Touch Optimizations for Mobile POS */
+button, 
+a {
+    -webkit-tap-highlight-color: transparent;
+}
