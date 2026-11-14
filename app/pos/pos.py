@@ -1,5 +1,6 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+import json
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from app import db
 from app.models import Product, Category, SalesTransaction, SalesItem
@@ -10,9 +11,7 @@ pos_bp = Blueprint('pos', __name__)
 @pos_bp.route('/', methods=['GET'])
 @login_required
 def index():
-    """Renders the Point-of-Sale (POS) terminal.
-    Accessible to both Cashier and Admin roles.
-    """
+    """Renders the Point-of-Sale (POS) terminal for Cashier and Admin roles."""
     products = Product.query.order_by(Product.product_name.asc()).all()
     categories = Category.query.order_by(Category.category_name.asc()).all()
     return render_template('pos/pos.html', products=products, categories=categories)
@@ -21,9 +20,9 @@ def index():
 @pos_bp.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
-    """Processes an atomic POS checkout transaction.
-    Decrements product inventory, creates ledger rows in sales_transactions
-    and sales_items, and calculates change. Supports JSON fetch payloads and form data.
+    """
+    Processes an atomic POS checkout transaction (/pos/checkout & /api/pos/checkout).
+    Saves sales_transactions and sales_items rows and deducts product stock_quantity.
     """
     if request.is_json:
         data = request.get_json() or {}
@@ -33,7 +32,6 @@ def checkout():
     cart_raw = data.get('items') or data.get('cart') or []
     if isinstance(cart_raw, str):
         try:
-            import json
             cart_items = json.loads(cart_raw)
         except Exception:
             cart_items = []
@@ -64,14 +62,17 @@ def checkout():
         if qty <= 0:
             continue
 
-        product = Product.query.get(product_id)
+        product = db.session.get(Product, int(product_id)) if product_id else None
         if not product:
-            return jsonify({'success': False, 'message': f'Product ID {product_id} not found in catalog.'}), 404
+            return jsonify({'success': False, 'message': f'Product ID {product_id} not found.'}), 404
 
         if product.stock_quantity < qty:
             return jsonify({
                 'success': False,
-                'message': f'Insufficient stock for "{product.product_name}". Available: {product.stock_quantity}, Requested: {qty}.'
+                'message': (
+                    f'Insufficient stock for "{product.product_name}". '
+                    f'Available: {product.stock_quantity}, Requested: {qty}.'
+                )
             }), 400
 
         item_unit_price = float(product.selling_price)
@@ -86,14 +87,14 @@ def checkout():
     if payment_method.upper() == 'CASH' and amount_tendered < total_amount:
         return jsonify({
             'success': False,
-            'message': f'Tendered amount (₱{amount_tendered:,.2f}) is insufficient for total bill of ₱{total_amount:,.2f}.'
+            'message': f'Tendered amount (PHP {amount_tendered:,.2f}) is less than total (PHP {total_amount:,.2f}).'
         }), 400
 
     change_amount = max(0.0, amount_tendered - total_amount) if payment_method.upper() == 'CASH' else 0.0
     if payment_method.upper() != 'CASH':
         amount_tendered = total_amount
 
-    # Step 3: Atomic database transaction write
+    # Step 3: Atomic database transaction write + stock deduction
     try:
         sale = SalesTransaction(
             user_id=current_user.user_id,
@@ -107,6 +108,7 @@ def checkout():
         db.session.add(sale)
         db.session.flush()
 
+        updated_stock_map = {}
         for product, qty, unit_price, sub_total in products_to_update:
             sale_item = SalesItem(
                 sale_id=sale.sale_id,
@@ -116,19 +118,21 @@ def checkout():
                 sub_total=sub_total
             )
             db.session.add(sale_item)
-            product.stock_quantity -= qty
 
-            if hasattr(product, 'risk_level'):
-                product.risk_level = 'HIGH' if product.stock_quantity <= product.reorder_level else 'LOW'
+            # Deduct inventory stock
+            product.stock_quantity -= qty
+            product.risk_level = 'HIGH' if product.stock_quantity <= product.reorder_level else 'LOW'
+            updated_stock_map[product.product_id] = product.stock_quantity
 
         db.session.commit()
 
         return jsonify({
             'success': True,
             'sale_id': sale.sale_id,
-            'total_amount': total_amount,
-            'amount_tendered': amount_tendered,
-            'change_amount': change_amount,
+            'total_amount': round(total_amount, 2),
+            'amount_tendered': round(amount_tendered, 2),
+            'change_amount': round(change_amount, 2),
+            'updated_stocks': updated_stock_map,
             'message': f'Sale #{sale.sale_id} processed successfully!'
         }), 200
 
@@ -137,16 +141,16 @@ def checkout():
         return jsonify({'success': False, 'message': f'Transaction error: {str(e)}'}), 500
 
 
-@pos_bp.route('/receipt/<int:sale_id>', methods=['GET'])
+@pos_bp.route('/receipt/', methods=['GET'])
 @login_required
 def receipt(sale_id):
-    """Returns details for a processed transaction to generate client-side receipts."""
+    """Returns JSON details for a completed transaction to render receipts."""
     sale = SalesTransaction.query.get_or_404(sale_id)
     items = SalesItem.query.filter_by(sale_id=sale.sale_id).all()
     receipt_items = []
 
     for item in items:
-        product = Product.query.get(item.product_id)
+        product = db.session.get(Product, item.product_id)
         receipt_items.append({
             'product_name': product.product_name if product else 'Item Removed',
             'quantity': item.quantity,

@@ -48,61 +48,12 @@ def create_app(config_class=None):
         except Exception:
             return None
 
-    @app.context_processor
-    def inject_global_data():
-        role_str = 'owner'
-        user_name = 'Aling Terry (Owner)'
-        if current_user and current_user.is_authenticated:
-            resolved_role = get_user_role(current_user).lower()
-            role_str = 'cashier' if resolved_role == 'cashier' else 'owner'
-            user_name = getattr(current_user, 'full_name', None) or getattr(current_user, 'username', 'User')
-
-        notifications_list = []
-        store_settings_obj = None
-        try:
-            store_settings_obj = StoreSetting.get_settings()
-            if role_str == 'owner':
-                products = Product.query.order_by(Product.stock_quantity.asc()).all()
-                for p in products:
-                    if p.stock_quantity == 0:
-                        notifications_list.append({
-                            'type': 'danger',
-                            'title': 'Out of Stock Alert',
-                            'message': f"{p.product_name} has 0 units left!",
-                            'time': 'Action needed'
-                        })
-                    elif p.stock_quantity <= p.reorder_level:
-                        notifications_list.append({
-                            'type': 'warning',
-                            'title': 'Low Stock Alert',
-                            'message': f"{p.product_name} has only {p.stock_quantity} items left.",
-                            'time': 'Reorder soon'
-                        })
-                pending_pos = PurchaseOrder.query.filter_by(status='Pending').limit(3).all()
-                for po in pending_pos:
-                    sup_name = po.supplier.supplier_name if po.supplier else 'Supplier'
-                    notifications_list.append({
-                        'type': 'info',
-                        'title': 'Pending Delivery',
-                        'message': f"{po.po_number} from {sup_name} is awaiting receipt.",
-                        'time': 'In transit'
-                    })
-        except Exception:
-            pass
-
-        return dict(
-            current_role=role_str,
-            current_user_name=user_name,
-            system_notifications=notifications_list,
-            store_settings=store_settings_obj
-        )
-
     # Direct Blueprint Registration
     from app.auth.auth import auth_bp
     from app.inventory.inventory import inventory_bp
-    from app.pos.pos import pos_bp
-    from app.suppliers.suppliers import suppliers_bp
-    from app.analytics.analytics import analytics_bp
+    from app.pos.pos import pos_bp, checkout as api_pos_checkout
+    from app.suppliers.suppliers import suppliers_bp, create_po as api_generate_po
+    from app.analytics.analytics import analytics_bp, sales_summary_api as api_daily_revenue
     from app.settings.settings import settings_bp
     from app.core.core import core_bp
 
@@ -113,5 +64,10 @@ def create_app(config_class=None):
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
     app.register_blueprint(settings_bp, url_prefix='/settings')
     app.register_blueprint(core_bp, url_prefix='/')
+
+    # Top-Level API Route Aliases matching Backend Checklist Specifications
+    app.add_url_rule('/api/pos/checkout', endpoint='api_pos_checkout', view_func=api_pos_checkout, methods=['POST'])
+    app.add_url_rule('/api/sales/daily-revenue', endpoint='api_daily_revenue', view_func=api_daily_revenue, methods=['GET'])
+    app.add_url_rule('/api/orders/generate-po', endpoint='api_generate_po', view_func=api_generate_po, methods=['POST'])
 
     return app
